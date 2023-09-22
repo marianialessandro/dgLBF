@@ -22,7 +22,6 @@ placeFlow(FlowId, Alloc, NewAlloc, (Path, B, Delay)) :-
 path(S, D, (MinB,MaxB), Alloc, PacketSize, BurstSize, BitRate, OldPath, NewPath) :-
     dif(S, D), link(S, N, TProp, Bandwidth), \+ member(N, OldPath), 
     node(N, MinNodeBudget), capacity(S, N, Alloc, Capacity), Bandwidth > Capacity + BitRate,
-    %writeln(Bandwidth), writeln(Capacity), writeln(BitRate),
     transmissionTime(PacketSize, Bandwidth, TTime),
     queuingTime(N, PacketSize, BurstSize, Bandwidth, QTime),
     NewMinB is MinB - MinNodeBudget - TProp - TTime, 
