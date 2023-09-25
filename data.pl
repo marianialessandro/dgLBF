@@ -8,11 +8,11 @@ node(n2, 10).
 node(nEnd, 5).
 
 % flowsAt(N, Flows)
-flowsAt(nStart, []).
+/* flowsAt(nStart, []).
 flowsAt(n1, []).
 flowsAt(n2, []).
 flowsAt(nEnd, []).
-
+ */
 % link(N1,N2, TProp, Bandwidth [Mbps])
 link(nStart, n1, 40, 100).
 link(nStart, n2, 15, 20).
