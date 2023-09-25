@@ -6,8 +6,5 @@ updateCapacities([N1,N2|Ns], BitRate, OldAlloc, NewAlloc) :-
     updateCapacities([N2|Ns], BitRate, [(N1,N2,BitRate)|OldAlloc], NewAlloc).
 updateCapacities([_], _, Alloc, Alloc).
 
-updateFlows([N|Ns], FlowId) :- flowsAt(N, Flows), retract(flowsAt(N, Flows)), assert(flowsAt(N, [FlowId|Flows])), updateFlows(Ns, FlowId).
-updateFlows([], _).
-
 usedBandwidth(N1, N2, Alloc, UsedBW) :- member((N1,N2,UsedBW), Alloc).
 usedBandwidth(N1, N2, Alloc, 0) :- \+ member((N1,N2,_), Alloc).

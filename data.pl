@@ -21,5 +21,5 @@ link(n2, nEnd, 6, 50).
 
 % flow(FlowId, NStart, NEnd, PacketSize [Mb], BurstSize [#packets], BitRate [Mbps], E2ELatencyBudget [ms], TolerationThreshold [ms])               
 flow(f1, nStart, nEnd, 0.008, 3, 5, 50, 10).
-flow(f2, nStart, nEnd, 0.008, 3, 5, 50, 10).
+flow(f2, nStart, nEnd, 0.008, 3, 5, 100, 10).
 flow(f3, nStart, nEnd, 0.008, 3, 5, 50, 10).
