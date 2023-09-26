@@ -7,19 +7,13 @@ node(n1, 5).
 node(n2, 10).
 node(nEnd, 5).
 
-% flowsAt(N, Flows)
-/* flowsAt(nStart, []).
-flowsAt(n1, []).
-flowsAt(n2, []).
-flowsAt(nEnd, []).
- */
-% link(N1,N2, TProp, Bandwidth [Mbps])
+% link(N1,N2, TProp [ms], Bandwidth [Mbps])
 link(nStart, n1, 40, 100).
 link(nStart, n2, 15, 20).
 link(n1, nEnd, 3, 20).
 link(n2, nEnd, 6, 50).
 
-% flow(FlowId, NStart, NEnd, PacketSize [Mb], BurstSize [#packets], BitRate [Mbps], E2ELatencyBudget [ms], TolerationThreshold [ms])               
+% flow(FlowId, NStart, NEnd, PacketSize [Mb], BurstSize [#packets], BitRate [Mbps], E2ELatencyBudget [ms], TolerationThreshold [ms])
 flow(f1, nStart, nEnd, 0.008, 3, 5, 50, 10).
-flow(f2, nStart, nEnd, 0.008, 3, 5, 100, 10).
-flow(f3, nStart, nEnd, 0.008, 3, 5, 50, 10).
+flow(f2, nStart, nEnd, 0.01, 4, 10, 100, 10).
+flow(f3, nStart, nEnd, 0.008, 5, 8, 40, 10).
