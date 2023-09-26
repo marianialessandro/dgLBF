@@ -24,7 +24,7 @@ placeFlow(FlowId, Alloc, NewAlloc, (Path, NewMinB, Delay)) :-
 
 path(S, D, MinB, Alloc, PacketSize, BurstSize, BitRate, OldPath, NewPath) :-
     dif(S, D), link(S, N, TProp, Bandwidth), \+ member(N, OldPath), 
-    node(N, MinNodeBudget), usedBandwidth(S, N, Alloc, UsedBW), Bandwidth > UsedBW + BitRate,
+    node(S, MinNodeBudget), usedBandwidth(S, N, Alloc, UsedBW), Bandwidth > UsedBW + BitRate,
     transmissionTime(PacketSize, Bandwidth, TTime),
     NewMinB is MinB - MinNodeBudget - TProp - TTime, 
     path(N, D, NewMinB, Alloc, PacketSize, BurstSize, BitRate, [S|OldPath], NewPath).
