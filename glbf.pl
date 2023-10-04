@@ -38,7 +38,7 @@ delay(PathMinB, _, 0) :- PathMinB < 0.
 queuingTimesOk([(FlowId, (P, MinB, D))|Fs], Paths, [(FlowId, (P, (MinB,MaxB), D))|NewFs]) :-
     flow(FlowId, _, _, PacketSize, BurstSize, _, _, Th), 
     totQTime(P, FlowId, PacketSize, BurstSize, Paths, TotQTime),
-    MaxB is MinB + 2*Th + TotQTime, MaxB >= 0,
+    MaxB is MinB + 2*Th - TotQTime, MaxB >= 0,
     queuingTimesOk(Fs, Paths, NewFs).
 queuingTimesOk([], _, []).
 
