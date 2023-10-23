@@ -1,5 +1,3 @@
-:- dynamic flowsAt/2.
-
 % node(NodeId, MinimumLatencyBudget)
 % TODO: estimate MinimumLatencyBudget with queue model (i.e. M/M/1) or UBS calculus?
 node(nStart, 8).
@@ -10,6 +8,9 @@ node(nEnd, 5).
 % link(N1,N2, TProp [ms], Bandwidth [Mbps])
 link(nStart, n1, 40, 100).
 link(nStart, n2, 15, 20).
+link(nStart, n3, 410, 100).
+link(nStart, n4, 3, 100).
+link(nStart, n5, 20, 100).
 link(n1, nEnd, 3, 20).
 link(n2, nEnd, 6, 50).
 

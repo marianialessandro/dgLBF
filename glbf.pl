@@ -1,4 +1,4 @@
-:-['utils.pl', 'data.pl'].
+:-['src/utils.pl', 'src/data.pl'].
 
 :- set_prolog_flag(answer_write_options,[max_depth(0), spacing(next_argument)]).
 :- set_prolog_flag(stack_limit, 64 000 000 000).
@@ -23,7 +23,8 @@ placeFlow(FlowId, Alloc, NewAlloc, (Path, NewMinB, Delay)) :-
     delay(NewMinB, Path, Delay), updateCapacities(Path, BitRate, Alloc, NewAlloc).
 
 path(S, D, MinB, Alloc, PacketSize, BurstSize, BitRate, OldPath, NewPath) :-
-    dif(S, D), link(S, N, TProp, Bandwidth), \+ member(N, OldPath), 
+    dif(S, D), rankedLinks(S, RankedLinks), 
+    member(link(S, N, TProp, Bandwidth), RankedLinks), \+ member(N, OldPath), 
     node(S, MinNodeBudget), usedBandwidth(S, N, Alloc, UsedBW), Bandwidth > UsedBW + BitRate,
     transmissionTime(PacketSize, Bandwidth, TTime),
     NewMinB is MinB - MinNodeBudget - TProp - TTime, 
