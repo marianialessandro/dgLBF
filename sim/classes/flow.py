@@ -32,7 +32,8 @@ class Flow:
         self.start = start
         self.end = end
 
-        self.packet_size = round(np.random.choice(c.PACKET_SIZE_RANGE), 3)
+        #self.packet_size = round(np.random.choice(c.PACKET_SIZE_RANGE), 3)
+        self.packet_size = c.PACKET_SIZE
         self.bit_rate = np.random.randint(c.BIT_RATE_MIN, c.BIT_RATE_MAX)
         self.burst_size = np.random.randint(c.BURST_SIZE_MIN, c.BURST_SIZE_MAX)
         self.latency_budget = np.random.randint(c.LATENCY_BUDGET_MIN, c.LATENCY_BUDGET_MAX)
@@ -42,7 +43,8 @@ class Flow:
     def __str__(self):
         return c.FLOW.format(**self.__dict__)
     
-    def upload(self, file):
+    def upload(self, file, append=True):
         makedirs(dirname(file)) if not exists(dirname(file)) else None		
-        with open(file, "a+") as f:
+        mode = "a+" if append else "w+"
+        with open(file, mode) as f:
             f.write(str(self)+"\n")

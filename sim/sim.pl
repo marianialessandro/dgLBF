@@ -12,3 +12,11 @@ sim_glbf(Out, Alloc, Infs, Time) :-
 
 	Infs is I2 - I1 - 5,
 	Time is T2 - T1.
+
+loadInfrastructure() :-
+    open('infra.pl', read, Str),
+    (retractall(node(_,_,_)), retractall(link(_,_,_,_)); true),
+    readAndAssert(Str).
+
+readAndAssert(Str) :-
+    read(Str, X), (X == end_of_file -> close(Str) ; assert(X), readAndAssert(Str)).

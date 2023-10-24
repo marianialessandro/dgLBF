@@ -30,7 +30,7 @@ class Experiment:
     def __init__(self, num_nodes: int = 2, num_flows: int = 1, seed: Any = None, timeout: int = None):
         
         self.timeout = timeout
-        self.infrastructure = Infrastructure(n=num_nodes, m=int(np.log2(num_nodes)), seed=seed)
+        self.infrastructure = Infrastructure(n=num_nodes, m=num_nodes//2, seed=seed) #int(np.log2(num_nodes)
         self.flows = self.generate_flows(num_flows)
 
         self.flows_file = c.FLOW_FILE_PATH.format(size=num_flows)
@@ -48,7 +48,7 @@ class Experiment:
     
     def upload(self):
         self.infrastructure.upload()
-        [f.upload(file=self.flows_file) for f in self.flows]
+        [f.upload(file=self.flows_file, append=(False if i == 0 else True)) for i, f in enumerate(self.flows)]
 
     def run(self):
         with PrologMQI() as mqi:

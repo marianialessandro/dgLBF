@@ -17,11 +17,11 @@ class Infrastructure(nx.DiGraph):
 		self.m = m
 
 		self.build(n, m, seed)
-		
+		self.degrees = self.out_degree()
 		self._size = len(self.nodes)
 		self.file = c.INFRA_FILE_PATH.format(size=self._size)
 
-	#@c.timeit
+	@c.timeit
 	def build(self, n, m, seed):
 		g = nx.barabasi_albert_graph(n, m, seed=seed)
 		self.init_nodes(g.nodes)
@@ -38,6 +38,23 @@ class Infrastructure(nx.DiGraph):
 			lat = np.random.randint(c.LINK_LAT_MIN, c.LINK_LAT_MAX)
 			bw = np.random.randint(c.LINK_BW_MIN, c.LINK_BW_MAX)
 			self.add_edge(s, d, lat=lat, bw=bw)
+			self.add_edge(d, s, lat=lat, bw=bw)
+
+	def str_min_max_latency(self):
+		min_latency = min([a["lat"] for _, _, a in self.edges(data=True)])
+		max_latency = max([a["lat"] for _, _, a in self.edges(data=True)])
+		min_latency = c.MIN_LATENCY.format(min_latency=min_latency)
+		max_latency = c.MAX_LATENCY.format(max_latency=max_latency)
+
+		return min_latency + "\n" + max_latency
+
+	def str_min_max_degrees(self):
+		min_degree = min([d for n, d in self.degrees])
+		max_degree = max([d for n, d in self.degrees])
+		min_degree = c.MIN_DEGREE.format(min_degree=min_degree)
+		max_degree = c.MAX_DEGREE.format(max_degree=max_degree)
+
+		return min_degree + "\n" + max_degree
 
 	def str_nodes(self):
 		return "\n".join([c.NODE.format(nid=str(n), latency_budget=a["latency_budget"]) for n, a in self.nodes(data=True)])
@@ -45,8 +62,16 @@ class Infrastructure(nx.DiGraph):
 	def str_links(self):
 		return "\n".join([c.LINK.format(source=str(s), dest=str(d), lat=a["lat"], bw=a["bw"]) for s, d, a in self.edges(data=True)])
 	
+	def str_degrees(self):
+		return "\n".join([c.DEGREE.format(nid=str(n), degree=str(d)) for n, d in self.degrees])
+	
 	def __str__(self):
-		return self.str_nodes() + "\n\n" + self.str_links() + "\n\n"
+		res = self.str_nodes() + "\n\n"
+		res += self.str_links() + "\n\n"
+		res += self.str_degrees() + "\n\n"
+		res += self.str_min_max_degrees() + "\n\n"
+		res += self.str_min_max_latency() + "\n\n"
+		return res
 	
 	def __repr__(self):
 		return self.__str__()

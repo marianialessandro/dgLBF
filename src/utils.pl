@@ -14,5 +14,10 @@ usedBandwidth(N1, N2, Alloc, 0) :- \+ member((N1,N2,_), Alloc).
 
 % rank links outgoing from N by their featured latency
 rankedLinks(N, RankedLinks) :-
-    findall(link(N, N2, Lat, BW), link(N, N2, Lat, BW), Links),
-    sort(3, @=<, Links, RankedLinks).
+    findall(r(Rank,link(N, N2, Lat, BW)), (link(N, N2, Lat, BW), degree(N2,D), rankedLink(Lat,D,Rank)), Links),
+    sort(Links, Tmp), findall(L, member(r(_,L), Tmp), RankedLinks).
+
+rankedLink(Lat,Deg,Rank) :-
+    (maxLatency(MaxLat), minLatency(MinLat), dif(MaxLat,MinLat), NormLat is (Lat-MinLat)/(MaxLat-MinLat) ; NormLat is 1 ),
+    (maxDegree(MaxDeg), minDegree(MinDeg), dif(MaxDeg, MinDeg), NormDeg is (MaxDeg-Deg)/(MaxDeg-MinDeg) ; NormDeg is 1),
+    Rank is 0 * NormLat + 1 * NormDeg.

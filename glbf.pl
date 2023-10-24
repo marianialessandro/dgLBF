@@ -1,5 +1,5 @@
 :-['src/utils.pl'].
-%:-['sim/data/flows/flows10.pl', 'sim/data/infrastructures/infr64.pl'].
+%:-['sim/data/flows/flows1.pl', 'sim/data/infrastructures/infr10.pl'].
 
 
 :- set_prolog_flag(answer_write_options,[max_depth(0), spacing(next_argument)]).
