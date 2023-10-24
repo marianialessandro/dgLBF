@@ -6,6 +6,7 @@ import config as c
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+import click
 
 
 # nx graph obtained as a barabasi albert graph
@@ -14,14 +15,18 @@ class Infrastructure(nx.DiGraph):
 		super().__init__(directed=True)
 		self.n = n
 		self.m = m
+
+		self.build(n, m, seed)
 		
+		self._size = len(self.nodes)
+		self.file = c.INFRA_FILE_PATH.format(size=self._size)
+
+	#@c.timeit
+	def build(self, n, m, seed):
 		g = nx.barabasi_albert_graph(n, m, seed=seed)
 		self.init_nodes(g.nodes)
 		self.init_links(g.edges)
-
 		self.to_directed()
-		self._size = len(self.nodes)
-		self.file = c.INFRA_FILE_PATH.format(size=self._size)
 
 	def init_nodes(self, nodes):
 		for n in nodes:
@@ -57,4 +62,12 @@ class Infrastructure(nx.DiGraph):
 		name = f"infrastructure_{self._size}" + c.PLOT_FORMAT
 		plt.savefig(join(c.PLOTS_DIR, name), dpi=c.PLOT_DPI, format=c.PLOT_FORMAT)
 
-	
+@click.command()
+@click.argument('nodes', type=int)
+@click.option('--seed', '-s', type=int, default=None, help="Seed for the random number generator.")
+def main(nodes, seed):
+	infrastructure = Infrastructure(n=nodes, m=int(np.log2(nodes)), seed=seed)
+	infrastructure.upload()
+
+if __name__ == '__main__':
+	main()

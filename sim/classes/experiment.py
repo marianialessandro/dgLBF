@@ -38,6 +38,7 @@ class Experiment:
 
         self.result = []
 
+    @c.timeit
     def generate_flows(self, num_flows):
         flows = []
         for i in range(num_flows):

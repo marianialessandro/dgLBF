@@ -1,5 +1,7 @@
 from os.path import abspath, dirname, join
+from functools import wraps
 import numpy as np
+import time
 
 # --- Directories & files ---
 ROOT_DIR = dirname(dirname(abspath(__file__)))
@@ -31,7 +33,7 @@ FIG_OPTIONS = {
 
 # --- Infrastructure config ---
 
-NODE_LAT_MIN, NODE_LAT_MAX = 1, 10
+NODE_LAT_MIN, NODE_LAT_MAX = 1, 5
 LINK_LAT_MIN, LINK_LAT_MAX = 1, 5
 LINK_BW_MIN, LINK_BW_MAX = 20, 500
 
@@ -40,7 +42,7 @@ PACKET_SIZE_MIN, PACKET_SIZE_MAX, PACKET_SIZE_STEP = 0.001, 0.01, 0.001
 PACKET_SIZE_RANGE = np.arange(PACKET_SIZE_MIN, PACKET_SIZE_MAX + PACKET_SIZE_STEP, PACKET_SIZE_STEP)
 BURST_SIZE_MIN, BURST_SIZE_MAX = 2, 10
 BIT_RATE_MIN, BIT_RATE_MAX = 1, 15
-LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 10, 150
+LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 30, 150
 TOLERATION_THRESHOLD_MIN, TOLERATION_THRESHOLD_MAX = 1, 10 
 
 ### TEMPLATES ###
@@ -56,3 +58,13 @@ FLOW = "flow({fid}, {start}, {end}, {packet_size}, {burst_size}, {bit_rate}, {la
 NODE = "node({nid}, {latency_budget})."
 LINK = "link({source}, {dest}, {lat}, {bw})."
 
+# --- Auxiliary function for timing ---
+def timeit(func):
+    @wraps(func)
+    def measure_time(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print("{} took {} seconds.".format(func.__name__, end_time - start_time))
+        return result
+    return measure_time

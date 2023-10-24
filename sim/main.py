@@ -13,14 +13,10 @@ TIMEOUT = 60 # seconds
 def main(nodes, flows, seed, timeout):
     """ Start an experiment with an infrastructure of NODES nodes, and FLOWS flows."""
 
-    res = []
-    i = 0
     print(f"Running experiment with {nodes} nodes and {flows} flows.")
-    #while not res:
-    i += 1
+
     e = Experiment(num_nodes=nodes, num_flows=flows, seed=seed, timeout=timeout)
     e.upload()
-    print(f"Running attempt {i}...")
     e.run()
     print(e)
 
