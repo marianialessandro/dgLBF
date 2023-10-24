@@ -28,10 +28,10 @@ class Flow:
         self.max_budget: float = 0.0
         self.delay: float = 0.0
 
-    def random_setup(self, start: int, end: int):
+    def random_setup(self, start: int, end: int,):
         self.start = start
         self.end = end
-
+        
         #self.packet_size = round(np.random.choice(c.PACKET_SIZE_RANGE), 3)
         self.packet_size = c.PACKET_SIZE
         self.bit_rate = np.random.randint(c.BIT_RATE_MIN, c.BIT_RATE_MAX)

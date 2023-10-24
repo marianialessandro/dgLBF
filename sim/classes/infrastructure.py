@@ -21,9 +21,10 @@ class Infrastructure(nx.DiGraph):
 		self._size = len(self.nodes)
 		self.file = c.INFRA_FILE_PATH.format(size=self._size)
 
-	@c.timeit
+	# @c.timeit
 	def build(self, n, m, seed):
 		g = nx.barabasi_albert_graph(n, m, seed=seed)
+		#g = nx.random_internet_as_graph(n, seed=seed)
 		self.init_nodes(g.nodes)
 		self.init_links(g.edges)
 		self.to_directed()
@@ -47,6 +48,14 @@ class Infrastructure(nx.DiGraph):
 		max_latency = c.MAX_LATENCY.format(max_latency=max_latency)
 
 		return min_latency + "\n" + max_latency
+	
+	def str_min_max_bw(self):
+		min_bw = min([a["bw"] for _, _, a in self.edges(data=True)])
+		max_bw = max([a["bw"] for _, _, a in self.edges(data=True)])
+		min_bw = c.MIN_BW.format(min_bw=min_bw)
+		max_bw = c.MAX_BW.format(max_bw=max_bw)
+
+		return min_bw + "\n" + max_bw
 
 	def str_min_max_degrees(self):
 		min_degree = min([d for n, d in self.degrees])
@@ -71,6 +80,7 @@ class Infrastructure(nx.DiGraph):
 		res += self.str_degrees() + "\n\n"
 		res += self.str_min_max_degrees() + "\n\n"
 		res += self.str_min_max_latency() + "\n\n"
+		res += self.str_min_max_bw() + "\n\n"
 		return res
 	
 	def __repr__(self):
@@ -84,7 +94,7 @@ class Infrastructure(nx.DiGraph):
 	
 	def save_graph(self):
 		nx.draw_networkx(self, arrows=True, with_labels=True, **c.FIG_OPTIONS)
-		name = f"infrastructure_{self._size}" + c.PLOT_FORMAT
+		name = f"infrastructure_{self._size}." + c.PLOT_FORMAT
 		plt.savefig(join(c.PLOTS_DIR, name), dpi=c.PLOT_DPI, format=c.PLOT_FORMAT)
 
 @click.command()

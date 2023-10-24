@@ -1,5 +1,8 @@
 :-['src/utils.pl'].
-%:-['sim/data/flows/flows1.pl', 'sim/data/infrastructures/infr10.pl'].
+%:-['sim/data/flows/flows5.pl', 'sim/data/infrastructures/infr30.pl'].
+
+:- table transmissionTime/3.
+
 
 
 :- set_prolog_flag(answer_write_options,[max_depth(0), spacing(next_argument)]).
@@ -19,29 +22,37 @@ placeFlows([FlowId|FlowIds], Alloc, NewAlloc, OldOut, Out) :-
 placeFlows([], Alloc, Alloc, Out, Out).
 
 placeFlow(FlowId, Alloc, NewAlloc, (Path, NewMinB, Delay)) :-
-    flow(FlowId, S, D, PacketSize, BurstSize, BitRate, Budget, Th),
+    flow(FlowId, S, D, PacketSize, _, BitRate, Budget, Th),
     MinB is Budget - Th,
-    path(S, D, MinB, Alloc, PacketSize, BurstSize, BitRate, [], (NewMinB,Path)),
+    path(S, D, MinB, Alloc, PacketSize, BitRate, [], (NewMinB,Path)),
     delay(NewMinB, Path, Delay), updateCapacities(Path, BitRate, Alloc, NewAlloc).
 
-path(S, D, MinB, Alloc, PacketSize, BurstSize, BitRate, OldPath, NewPath) :-
+path(S, D, MinB, Alloc, PacketSize, BitRate, OldPath, (Budget, NewPath)) :-
+    link(S, D, TProp, Bandwidth), 
+    node(S, MinNodeBudget), usedBandwidth(S, D, Alloc, UsedBW), Bandwidth > UsedBW + BitRate,
+    transmissionTime(PacketSize, Bandwidth, TTime),
+    Budget is MinB - MinNodeBudget - TProp - TTime, 
+    reverse([D|OldPath], NewPath).
+path(S, D, MinB, Alloc, PacketSize, BitRate, OldPath, NewPath) :-
     dif(S, D), rankedLinks(S, RankedLinks), 
     member(link(S, N, TProp, Bandwidth), RankedLinks), \+ member(N, OldPath), 
     node(S, MinNodeBudget), usedBandwidth(S, N, Alloc, UsedBW), Bandwidth > UsedBW + BitRate,
     transmissionTime(PacketSize, Bandwidth, TTime),
     NewMinB is MinB - MinNodeBudget - TProp - TTime, 
-    path(N, D, NewMinB, Alloc, PacketSize, BurstSize, BitRate, [S|OldPath], NewPath).
-path(D, D, Budget, _, _, _, _, P, (Budget,FP)) :- reverse([D|P],FP).
+    path(N, D, NewMinB, Alloc, PacketSize, BitRate, [S|OldPath], NewPath).
+%path(D, D, Budget, _, _, _, _, P, (Budget,FP)) :- reverse([D|P],FP).
 
 transmissionTime(PacketSize, Bandwidth, TTime) :- TTime is PacketSize/Bandwidth.
 
 delay(PathMinB, Path, Delay) :- PathMinB > 0, length(Path, L), Hops is L-1, Delay is PathMinB/Hops.
 delay(PathMinB, _, 0) :- PathMinB < 0.
 
-queuingTimesOk([(FlowId, (P, MinB, D))|Fs], Paths, [(FlowId, (P, (MinB,MaxB), D))|NewFs]) :-
+/*queuingTimesOk([(FlowId, (P, MinB, D))|Fs], Paths, [(FlowId, (P, (MinB,MaxB), D))|NewFs]) :-
     flow(FlowId, _, _, PacketSize, BurstSize, _, _, Th), 
     totQTime(P, FlowId, PacketSize, BurstSize, Paths, TotQTime),
     MaxB is MinB + 2*Th - TotQTime, MaxB >= 0,
+    queuingTimesOk(Fs, Paths, NewFs).*/
+queuingTimesOk([(FlowId, (P, MinB, D))|Fs], Paths, [(FlowId, (P, (MinB,MinB), D))|NewFs]) :-
     queuingTimesOk(Fs, Paths, NewFs).
 queuingTimesOk([], _, []).
 

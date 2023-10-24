@@ -30,7 +30,8 @@ class Experiment:
     def __init__(self, num_nodes: int = 2, num_flows: int = 1, seed: Any = None, timeout: int = None):
         
         self.timeout = timeout
-        self.infrastructure = Infrastructure(n=num_nodes, m=num_nodes//2, seed=seed) #int(np.log2(num_nodes)
+        np.random.seed(seed)
+        self.infrastructure = Infrastructure(n=num_nodes, m=int(np.log2(num_nodes)), seed=seed) #
         self.flows = self.generate_flows(num_flows)
 
         self.flows_file = c.FLOW_FILE_PATH.format(size=num_flows)
@@ -38,7 +39,7 @@ class Experiment:
 
         self.result = []
 
-    @c.timeit
+    # @c.timeit
     def generate_flows(self, num_flows):
         flows = []
         for i in range(num_flows):
@@ -71,7 +72,7 @@ class Experiment:
         return {flow: {"path": path, "budgets": budgets, "delay": delay} for (flow, (path, (budgets, delay))) in paths} 
 
     def parse_allocation(self, allocation):
-        return {(s, d): bw for (bw, (s, d)) in allocation}
+        return {(s, d): bw for (s, (d, bw)) in allocation}
 
     def parse_output(self, out):
         o = parse_prolog(out)

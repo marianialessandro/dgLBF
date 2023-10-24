@@ -20,7 +20,8 @@ INFRA_FILE_PATH = join(INFRA_DIR, INFRA_FILE)
 
 # --- Plots config ---
 PLOT_FORMAT = "pdf"
-PLOT_PATH = join(PLOTS_DIR, "{name}." + PLOT_FORMAT)
+PLOT_FILE = "{name}." + PLOT_FORMAT
+PLOT_PATH = join(PLOTS_DIR, PLOT_FILE)
 PLOT_DPI = 600
 
 # --- Figure config ---
@@ -34,7 +35,7 @@ FIG_OPTIONS = {
 # --- Infrastructure config ---
 
 NODE_LAT_MIN, NODE_LAT_MAX = 1, 10
-LINK_LAT_MIN, LINK_LAT_MAX = 1, 10
+LINK_LAT_MIN, LINK_LAT_MAX = 1, 3
 LINK_BW_MIN, LINK_BW_MAX = 10, 500
 
 # --- Flow config ---
@@ -43,7 +44,7 @@ PACKET_SIZE = 0.008
 #PACKET_SIZE_RANGE = np.arange(PACKET_SIZE_MIN, PACKET_SIZE_MAX + PACKET_SIZE_STEP, PACKET_SIZE_STEP)
 BURST_SIZE_MIN, BURST_SIZE_MAX = 2, 4
 BIT_RATE_MIN, BIT_RATE_MAX = 1, 15
-LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 30, 150
+LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 50, 200
 TOLERATION_THRESHOLD_MIN, TOLERATION_THRESHOLD_MAX = 1, 10 
 
 ### TEMPLATES ###
@@ -63,6 +64,8 @@ MAX_DEGREE = "maxDegree({max_degree})."
 MIN_DEGREE = "minDegree({min_degree})."
 MAX_LATENCY = "maxLatency({max_latency})."
 MIN_LATENCY = "minLatency({min_latency})."
+MAX_BW = "maxBandwidth({max_bw})."
+MIN_BW = "minBandwidth({min_bw})."
 
 # --- Auxiliary function for timing ---
 def timeit(func):

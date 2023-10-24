@@ -13,9 +13,9 @@ TIMEOUT = 60 # seconds
 def main(nodes, flows, seed, timeout):
     """ Start an experiment with an infrastructure of NODES nodes, and FLOWS flows."""
 
-    print(f"Running experiment with {nodes} nodes and {flows} flows.")
-
     e = Experiment(num_nodes=nodes, num_flows=flows, seed=seed, timeout=timeout)
+    e.infrastructure.save_graph()
+    print(f"Running experiment with {nodes} nodes, {len(e.infrastructure.edges)} edges and {flows} flows.")
     e.upload()
     e.run()
     print(e)
