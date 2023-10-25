@@ -18,8 +18,11 @@ GML_DIR = join(DATA_DIR, "gml")
 GML_FILE = "{name}.gml"
 FLOWS_FILE = "flows{size}.pl"
 INFRA_FILE = "infr{name}.pl"
+
+GML_FILE_PATH = join(GML_DIR, GML_FILE)
 FLOW_FILE_PATH = join(FLOW_DIR, FLOWS_FILE)
 INFRA_FILE_PATH = join(INFRA_DIR, INFRA_FILE)
+SIM_FILE_PATH = join(SIM_DIR, "sim.pl")
 
 # --- Plots config ---
 PLOT_FORMAT = "pdf"
@@ -50,15 +53,16 @@ PACKET_SIZE = 0.008
 #PACKET_SIZE_MIN, PACKET_SIZE_MAX, PACKET_SIZE_STEP = 0.001, 0.01, 0.001
 #PACKET_SIZE_RANGE = np.arange(PACKET_SIZE_MIN, PACKET_SIZE_MAX + PACKET_SIZE_STEP, PACKET_SIZE_STEP)
 BURST_SIZE_MIN, BURST_SIZE_MAX = 2, 4
-BIT_RATE_MIN, BIT_RATE_MAX = 1, 15
-LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 40, 150
-TOLERATION_THRESHOLD_MIN, TOLERATION_THRESHOLD_MAX = 1, 10 
+BIT_RATE_MIN, BIT_RATE_MAX = 1, 50
+LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 50, 150
+TOLERATION_THRESHOLD_MIN, TOLERATION_THRESHOLD_MAX = 1, 10
 
 ### TEMPLATES ###
 
 # -- Prolog Templates ---
-MAIN_FILE = join(SIM_DIR, "sim.pl")
 MAIN_QUERY = "once(sim_glbf(Output, Allocation, Inferences, Time))."
+LOAD_INFR_QUERY = "once(loadInfrastructure('{path}'))."
+LOAD_FLOWS_QUERY = "once(loadFlows('{path}'))."
 
 # --- Flow templates ---
 FLOW = "flow({fid}, {start}, {end}, {packet_size}, {burst_size}, {bit_rate}, {latency_budget}, {toleration_threshold})."

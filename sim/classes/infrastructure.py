@@ -19,7 +19,7 @@ class Infrastructure(nx.DiGraph):
 		self.m = m
 
 		if gml:
-			g = nx.read_gml(join(c.GML_DIR, c.GML_FILE.format(name=gml)))
+			g = nx.read_gml(c.GML_FILE_PATH.format(name=gml))
 		else:
 			g = nx.barabasi_albert_graph(n, m, seed=seed)
 
@@ -34,11 +34,11 @@ class Infrastructure(nx.DiGraph):
 	def init_nodes(self, nodes):
 		for n in nodes:
 			latency_budget = np.random.randint(c.NODE_LAT_MIN, c.NODE_LAT_MAX)
-			self.add_node(n.lower(), latency_budget=latency_budget)
+			self.add_node(str(n).lower(), latency_budget=latency_budget)
 
 	def init_links(self, links):
 		for s,d in links:
-			s, d = s.lower(), d.lower()
+			s, d = str(s).lower(), str(d).lower()
 			lat = np.random.randint(c.LINK_LAT_MIN, c.LINK_LAT_MAX)
 			bw = np.random.randint(c.LINK_BW_MIN, c.LINK_BW_MAX)
 			self.add_edge(s, d, lat=lat, bw=bw)

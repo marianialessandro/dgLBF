@@ -1,5 +1,5 @@
 :-['src/utils.pl'].
-%:-['sim/data/flows/flows20.pl', 'sim/data/infrastructures/infrcost266.pl'].
+%:-['sim/data/flows/flows2.pl', 'sim/data/infrastructures/infrNorway.pl'].
 
 :- table transmissionTime/3.
 
@@ -53,9 +53,8 @@ queuingTimesOk([(FlowId, (P, MinB, D))|Fs], Paths, [(FlowId, (P, (MinB,MaxB), D)
     totQTime(P, FlowId, PacketSize, BurstSize, Paths, TotQTime),
     MaxB is MinB + 2*Th - TotQTime, MaxB >= 0,
     queuingTimesOk(Fs, Paths, NewFs).
-/*queuingTimesOk([(FlowId, (P, MinB, D))|Fs], Paths, [(FlowId, (P, (MinB,MinB), D))|NewFs]) :-
-    queuingTimesOk(Fs, Paths, NewFs).
-queuingTimesOk([], _, []).*/
+%queuingTimesOk([(FlowId, (P, MinB, D))|Fs], Paths, [(FlowId, (P, (MinB,MinB), D))|NewFs]) :- queuingTimesOk(Fs, Paths, NewFs).
+queuingTimesOk([], _, []).
 
 totQTime([S,D|Path], FId, PacketSize, BurstSize, Paths, TotQTime) :-
     link(S, D, _, Bandwidth),

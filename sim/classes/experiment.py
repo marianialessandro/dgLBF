@@ -32,7 +32,10 @@ class Experiment:
         
         self.timeout = timeout
         np.random.seed(seed)
-        self.infrastructure = Infrastructure(n=num_nodes, m=int(np.log2(num_nodes)), seed=seed, gml=gml) #
+        if gml:
+            self.infrastructure = Infrastructure(gml=gml)
+        else:
+            self.infrastructure = Infrastructure(n=num_nodes, m=int(np.log2(num_nodes)), seed=seed) #
         self.flows = self.generate_flows(num_flows)
 
         self.flows_file = c.FLOW_FILE_PATH.format(size=num_flows)
@@ -55,9 +58,9 @@ class Experiment:
     def run(self):
         with PrologMQI() as mqi:
             with mqi.create_thread() as prolog:
-                prolog.query("consult('{}')".format(c.MAIN_FILE))
-                prolog.query("consult('{}')".format(self.flows_file))
-                prolog.query("consult('{}')".format(self.infr_file))
+                prolog.query("consult('{}')".format(c.SIM_FILE_PATH))
+                prolog.query(c.LOAD_INFR_QUERY.format(path=self.infr_file))
+                prolog.query(c.LOAD_FLOWS_QUERY.format(path=self.flows_file))
                 prolog.query_async(c.MAIN_QUERY, find_all=False, query_timeout_seconds=self.timeout)
 
                 try:
@@ -91,8 +94,8 @@ class Experiment:
             for flow, attr in self.result["Output"].items():
                 res += f"Flow {flow}: \n"
                 res += f"\tPath: {attr['path']}\n"
-                res += f"\tBudgets: {attr['budgets']}\n"
-                res += f"\tDelay: {attr['delay']}\n"
+                res += f"\tBudgets: {round(attr['budgets'][0], 4), round(attr['budgets'][1], 4)}\n"
+                res += f"\tDelay: {round(attr['delay'],4)}\n"
             res += "Allocation: \n"
             for (s, d), bw in self.result["Allocation"].items():
                 res += f"\tLink {s} -> {d}: {bw} Mbps\n"
