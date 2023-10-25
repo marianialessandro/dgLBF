@@ -1,6 +1,7 @@
 from os import makedirs
 from os.path import dirname, exists, join
 from typing import Any
+from string import ascii_lowercase
 
 import config as c
 import matplotlib.pyplot as plt
@@ -11,31 +12,33 @@ import click
 
 # nx graph obtained as a barabasi albert graph
 class Infrastructure(nx.DiGraph):
-	def __init__(self, n: int = 2, m: int = 1, seed: Any = None):
+	def __init__(self, n: int = 2, m: int = 1, 
+			  	seed: Any = None, gml: str = None):
 		super().__init__(directed=True)
 		self.n = n
 		self.m = m
 
-		self.build(n, m, seed)
-		self.degrees = self.out_degree()
-		self._size = len(self.nodes)
-		self.file = c.INFRA_FILE_PATH.format(size=self._size)
+		if gml:
+			g = nx.read_gml(join(c.GML_DIR, c.GML_FILE.format(name=gml)))
+		else:
+			g = nx.barabasi_albert_graph(n, m, seed=seed)
 
-	# @c.timeit
-	def build(self, n, m, seed):
-		g = nx.barabasi_albert_graph(n, m, seed=seed)
-		#g = nx.random_internet_as_graph(n, seed=seed)
 		self.init_nodes(g.nodes)
 		self.init_links(g.edges)
 		self.to_directed()
 
+		self.degrees = self.out_degree()
+		self._size = len(self.nodes)
+		self.file = c.INFRA_FILE_PATH.format(name=(gml if gml else self._size))
+
 	def init_nodes(self, nodes):
 		for n in nodes:
 			latency_budget = np.random.randint(c.NODE_LAT_MIN, c.NODE_LAT_MAX)
-			self.add_node(n, latency_budget=latency_budget)
+			self.add_node(n.lower(), latency_budget=latency_budget)
 
 	def init_links(self, links):
 		for s,d in links:
+			s, d = s.lower(), d.lower()
 			lat = np.random.randint(c.LINK_LAT_MIN, c.LINK_LAT_MAX)
 			bw = np.random.randint(c.LINK_BW_MIN, c.LINK_BW_MAX)
 			self.add_edge(s, d, lat=lat, bw=bw)
@@ -80,7 +83,7 @@ class Infrastructure(nx.DiGraph):
 		res += self.str_degrees() + "\n\n"
 		res += self.str_min_max_degrees() + "\n\n"
 		res += self.str_min_max_latency() + "\n\n"
-		res += self.str_min_max_bw() + "\n\n"
+		res += self.str_min_max_bw() + "\n"
 		return res
 	
 	def __repr__(self):

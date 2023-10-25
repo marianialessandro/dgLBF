@@ -1,9 +1,7 @@
 :-['src/utils.pl'].
-%:-['sim/data/flows/flows5.pl', 'sim/data/infrastructures/infr30.pl'].
+:-['sim/data/flows/flows20.pl', 'sim/data/infrastructures/infrcost266.pl'].
 
 :- table transmissionTime/3.
-
-
 
 :- set_prolog_flag(answer_write_options,[max_depth(0), spacing(next_argument)]).
 :- set_prolog_flag(stack_limit, 64 000 000 000).
@@ -17,33 +15,36 @@ glbf(Out, Alloc) :-
 
 placeFlows(FlowIds, Alloc, Out) :- placeFlows(FlowIds, [], Alloc, [], Out).
 placeFlows([FlowId|FlowIds], Alloc, NewAlloc, OldOut, Out) :-
-    placeFlow(FlowId, Alloc, TmpAlloc, FOut),
+    placeFlow(FlowId, Alloc, TmpAlloc, FOut), write("Placed "), writeln(FlowId),
     placeFlows(FlowIds, TmpAlloc, NewAlloc, [(FlowId, FOut)|OldOut], Out).
 placeFlows([], Alloc, Alloc, Out, Out).
 
 placeFlow(FlowId, Alloc, NewAlloc, (Path, NewMinB, Delay)) :-
     flow(FlowId, S, D, PacketSize, _, BitRate, Budget, Th),
     MinB is Budget - Th,
-    path(S, D, MinB, Alloc, PacketSize, BitRate, [], (NewMinB,Path)),
+    path(S, D, MinB, Alloc, PacketSize, BitRate, [S], (NewMinB,Path)),
     delay(NewMinB, Path, Delay), updateCapacities(Path, BitRate, Alloc, NewAlloc).
 
 path(S, D, MinB, Alloc, PacketSize, BitRate, OldPath, (Budget, NewPath)) :-
     link(S, D, TProp, Bandwidth), 
-    node(S, MinNodeBudget), usedBandwidth(S, D, Alloc, UsedBW), Bandwidth > UsedBW + BitRate,
-    transmissionTime(PacketSize, Bandwidth, TTime),
-    Budget is MinB - MinNodeBudget - TProp - TTime, 
+    hopOK(D, TProp, Bandwidth, Alloc, PacketSize, BitRate, MinB, Budget),
     reverse([D|OldPath], NewPath).
 path(S, D, MinB, Alloc, PacketSize, BitRate, OldPath, NewPath) :-
     dif(S, D), rankedLinks(S, RankedLinks), 
     member(link(S, N, TProp, Bandwidth), RankedLinks), \+ member(N, OldPath), 
-    node(S, MinNodeBudget), usedBandwidth(S, N, Alloc, UsedBW), Bandwidth > UsedBW + BitRate,
-    transmissionTime(PacketSize, Bandwidth, TTime),
-    NewMinB is MinB - MinNodeBudget - TProp - TTime, 
-    path(N, D, NewMinB, Alloc, PacketSize, BitRate, [S|OldPath], NewPath).
+    hopOK(N, TProp, Bandwidth, Alloc, PacketSize, BitRate, MinB, NewMinB),
+    path(N, D, NewMinB, Alloc, PacketSize, BitRate, [N|OldPath], NewPath).
 %path(D, D, Budget, _, _, _, _, P, (Budget,FP)) :- reverse([D|P],FP).
+
+hopOK(N, TProp, Bandwidth, Alloc, PacketSize, BitRate, MinB, NewMinB) :- 
+    node(N, MinNodeBudget), usedBandwidth(N, _, Alloc, UsedBW), Bandwidth > UsedBW + BitRate,
+    transmissionTime(PacketSize, Bandwidth, TTime),
+    NewMinB is MinB - MinNodeBudget - TProp - TTime.
 
 transmissionTime(PacketSize, Bandwidth, TTime) :- TTime is PacketSize/Bandwidth.
 
+% path is just one hop
+delay(PathMinB, [_,_], Delay) :- Delay is PathMinB.
 delay(PathMinB, Path, Delay) :- PathMinB > 0, length(Path, L), Hops is L-1, Delay is PathMinB/Hops.
 delay(PathMinB, _, 0) :- PathMinB < 0.
 

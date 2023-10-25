@@ -5,17 +5,17 @@ from os import makedirs
 from os.path import join, dirname, exists
 
 class Flow:
-    def __init__(self, fid: str, start: int, end: int, 
+    def __init__(self, fid: str, start: str, end: str, 
                 packet_size: float = 0.0, burst_size: int = 0, bit_rate: float = 0.0,
                 latency_budget: float = 0.0, toleration_threshold: float = 0.0,
                 random: bool = False):
         
         self.fid = fid
+        self.start = start
+        self.end = end
         if random:
-            self.random_setup(start, end)
+            self.random_setup()
         else:
-            self.start = start
-            self.end = end
             self.packet_size = packet_size
             self.burst_size = burst_size
             self.bit_rate = bit_rate
@@ -28,10 +28,7 @@ class Flow:
         self.max_budget: float = 0.0
         self.delay: float = 0.0
 
-    def random_setup(self, start: int, end: int,):
-        self.start = start
-        self.end = end
-        
+    def random_setup(self):       
         #self.packet_size = round(np.random.choice(c.PACKET_SIZE_RANGE), 3)
         self.packet_size = c.PACKET_SIZE
         self.bit_rate = np.random.randint(c.BIT_RATE_MIN, c.BIT_RATE_MAX)

@@ -27,15 +27,16 @@ def parse_prolog(query):
 
 
 class Experiment:
-    def __init__(self, num_nodes: int = 2, num_flows: int = 1, seed: Any = None, timeout: int = None):
+    def __init__(self, num_nodes: int = 2, num_flows: int = 1, 
+                 seed: Any = None, timeout: int = None, gml: str = None):
         
         self.timeout = timeout
         np.random.seed(seed)
-        self.infrastructure = Infrastructure(n=num_nodes, m=int(np.log2(num_nodes)), seed=seed) #
+        self.infrastructure = Infrastructure(n=num_nodes, m=int(np.log2(num_nodes)), seed=seed, gml=gml) #
         self.flows = self.generate_flows(num_flows)
 
         self.flows_file = c.FLOW_FILE_PATH.format(size=num_flows)
-        self.infr_file = c.INFRA_FILE_PATH.format(size=num_nodes)
+        self.infr_file = c.INFRA_FILE_PATH.format(name=(gml if gml else num_nodes))
 
         self.result = []
 
