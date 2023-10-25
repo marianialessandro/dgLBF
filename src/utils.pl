@@ -15,8 +15,7 @@ usedBandwidth(N1, N2, Alloc, 0) :- \+ member((N1,N2,_), Alloc).
 
 % rank links outgoing from N by their rank computed via latency, degree and bandwidth
 rankedLinks(N, RankedLinks) :-
-    findall(r(Rank,link(N, N2, Lat, BW)), (link(N, N2, Lat, BW), degree(N2, Deg), rankedLink(Lat, BW, Degree, Rank), Links),
-    writeln("AAAA"), writeln(Links),
+    findall(r(Rank,link(N, N2, Lat, BW)), (link(N, N2, Lat, BW), degree(N2, Deg), rankedLink(Lat, BW, Deg, Rank)), Links),
     sort(Links, Tmp), findall(L, member(r(_,L), Tmp), RankedLinks).
 
 rankedLink(Lat, BW, Deg, Rank) :-
