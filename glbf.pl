@@ -1,5 +1,5 @@
 :-['src/utils.pl'].
-:-['sim/data/flows/flows20.pl', 'sim/data/infrastructures/infrcost266.pl'].
+%:-['sim/data/flows/flows20.pl', 'sim/data/infrastructures/infrcost266.pl'].
 
 :- table transmissionTime/3.
 
@@ -15,7 +15,7 @@ glbf(Out, Alloc) :-
 
 placeFlows(FlowIds, Alloc, Out) :- placeFlows(FlowIds, [], Alloc, [], Out).
 placeFlows([FlowId|FlowIds], Alloc, NewAlloc, OldOut, Out) :-
-    placeFlow(FlowId, Alloc, TmpAlloc, FOut), write("Placed "), writeln(FlowId),
+    placeFlow(FlowId, Alloc, TmpAlloc, FOut),
     placeFlows(FlowIds, TmpAlloc, NewAlloc, [(FlowId, FOut)|OldOut], Out).
 placeFlows([], Alloc, Alloc, Out, Out).
 
@@ -48,14 +48,14 @@ delay(PathMinB, [_,_], Delay) :- Delay is PathMinB.
 delay(PathMinB, Path, Delay) :- PathMinB > 0, length(Path, L), Hops is L-1, Delay is PathMinB/Hops.
 delay(PathMinB, _, 0) :- PathMinB < 0.
 
-/*queuingTimesOk([(FlowId, (P, MinB, D))|Fs], Paths, [(FlowId, (P, (MinB,MaxB), D))|NewFs]) :-
+queuingTimesOk([(FlowId, (P, MinB, D))|Fs], Paths, [(FlowId, (P, (MinB,MaxB), D))|NewFs]) :-
     flow(FlowId, _, _, PacketSize, BurstSize, _, _, Th), 
     totQTime(P, FlowId, PacketSize, BurstSize, Paths, TotQTime),
     MaxB is MinB + 2*Th - TotQTime, MaxB >= 0,
-    queuingTimesOk(Fs, Paths, NewFs).*/
-queuingTimesOk([(FlowId, (P, MinB, D))|Fs], Paths, [(FlowId, (P, (MinB,MinB), D))|NewFs]) :-
     queuingTimesOk(Fs, Paths, NewFs).
-queuingTimesOk([], _, []).
+/*queuingTimesOk([(FlowId, (P, MinB, D))|Fs], Paths, [(FlowId, (P, (MinB,MinB), D))|NewFs]) :-
+    queuingTimesOk(Fs, Paths, NewFs).
+queuingTimesOk([], _, []).*/
 
 totQTime([S,D|Path], FId, PacketSize, BurstSize, Paths, TotQTime) :-
     link(S, D, _, Bandwidth),

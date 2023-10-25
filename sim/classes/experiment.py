@@ -36,7 +36,7 @@ class Experiment:
         self.flows = self.generate_flows(num_flows)
 
         self.flows_file = c.FLOW_FILE_PATH.format(size=num_flows)
-        self.infr_file = c.INFRA_FILE_PATH.format(name=(gml if gml else num_nodes))
+        self.infr_file = c.INFRA_FILE_PATH.format(name=(gml.title() if gml else num_nodes))
 
         self.result = []
 

@@ -1,4 +1,5 @@
 from os.path import abspath, dirname, join
+from os import listdir
 from functools import wraps
 import numpy as np
 import time
@@ -14,7 +15,6 @@ FLOW_DIR = join(DATA_DIR, "flows")
 INFRA_DIR = join(DATA_DIR, "infrastructures")
 GML_DIR = join(DATA_DIR, "gml")
 
-
 GML_FILE = "{name}.gml"
 FLOWS_FILE = "flows{size}.pl"
 INFRA_FILE = "infr{name}.pl"
@@ -26,6 +26,10 @@ PLOT_FORMAT = "pdf"
 PLOT_FILE = "{name}." + PLOT_FORMAT
 PLOT_PATH = join(PLOTS_DIR, PLOT_FILE)
 PLOT_DPI = 600
+
+# --- Experiment config ---
+TIMEOUT = 60 # seconds
+GML_CHOICES = [f[:-4] for f in listdir(GML_DIR) if f.endswith(".gml")]
 
 # --- Figure config ---
 FIG_OPTIONS = {

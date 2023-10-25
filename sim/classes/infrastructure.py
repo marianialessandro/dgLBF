@@ -29,7 +29,7 @@ class Infrastructure(nx.DiGraph):
 
 		self.degrees = self.out_degree()
 		self._size = len(self.nodes)
-		self.file = c.INFRA_FILE_PATH.format(name=(gml if gml else self._size))
+		self.file = c.INFRA_FILE_PATH.format(name=(gml.title() if gml else self._size))
 
 	def init_nodes(self, nodes):
 		for n in nodes:
