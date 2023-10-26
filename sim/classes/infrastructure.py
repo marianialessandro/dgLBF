@@ -1,5 +1,5 @@
 from os import makedirs
-from os.path import dirname, exists, join
+from os.path import dirname, exists, join, basename
 from typing import Any
 from string import ascii_lowercase
 
@@ -30,6 +30,7 @@ class Infrastructure(nx.DiGraph):
 		self.degrees = self.out_degree()
 		self._size = len(self.nodes)
 		self.file = c.INFRA_FILE_PATH.format(name=(gml.title() if gml else self._size))
+		self.name = basename(self.file).split(".")[0]
 
 	def init_nodes(self, nodes):
 		for n in nodes:
