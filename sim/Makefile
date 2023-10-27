@@ -2,9 +2,10 @@ SIM_DIR 	= $(shell pwd)
 PLOT_DIR 	= $(SIM_DIR)/plots
 DATA_DIR 	= $(SIM_DIR)/data
 INFR_DIR 	= $(DATA_DIR)/infrastructures
+RES_DIR 	= $(SIM_DIR)/results
 GML_DIR 	= $(DATA_DIR)/gml
 FLOW_DIR 	= $(DATA_DIR)/flows
-RES_FILE 	= $(SIM_DIR)/results.csv
+
 
 PYTHON		= $(shell which python3)
 
@@ -26,12 +27,12 @@ clean-flow:
 	rm -rf $(FLOW_DIR)/*
 
 clean-res:
-	rm -rf $(RES_FILE)
+	rm -rf $(RES_DIR)/*
 
 clean-plot:
 	rm -rf $(PLOT_DIR)/*
 
-clean: clean-infr clean-flow  clean-plot
+clean: clean-infr clean-flow clean-res clean-plot
 
 plot:
 	$(PYTHON) $(SIM_DIR)/plot.py

@@ -8,7 +8,7 @@ graph [
 
   node [
     id     0
-    label  "Amste..."
+    label  "Amsterdam"
 
     graphics [
       x        394.07
@@ -46,7 +46,7 @@ graph [
 
   node [
     id     2
-    label  "Barce..."
+    label  "Barcelona"
 
     graphics [
       x        303.87
@@ -160,7 +160,7 @@ graph [
 
   node [
     id     8
-    label  "Copen..."
+    label  "Copenaghen"
 
     graphics [
       x        682.79
@@ -198,7 +198,7 @@ graph [
 
   node [
     id     10
-    label  "Frank..."
+    label  "Frankfurt"
 
     graphics [
       x        537.14
@@ -426,7 +426,7 @@ graph [
 
   node [
     id     22
-    label  "Stock..."
+    label  "Stockholm"
 
     graphics [
       x        893.88
@@ -445,7 +445,7 @@ graph [
 
   node [
     id     23
-    label  "Stras..."
+    label  "Strasbourg"
 
     graphics [
       x        502.76
