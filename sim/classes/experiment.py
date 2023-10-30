@@ -38,6 +38,7 @@ class Experiment:
         self.num_flows = num_flows
         self.gmls = gmls
         self.max_iterations = max_iterations
+        self.seed = seed
         self.timeout = timeout
         self.results = []
 
