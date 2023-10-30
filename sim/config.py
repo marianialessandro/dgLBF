@@ -33,7 +33,7 @@ PLOT_PATH = join(PLOTS_DIR, PLOT_FILE)
 PLOT_DPI = 600
 
 # --- Experiment config ---
-TIMEOUT = 300 # seconds
+TIMEOUT = 900 # seconds
 GML_CHOICES = [f[:-4] for f in listdir(GML_DIR) if f.endswith(".gml")]
 EXP_TIMESTAMP_FORMAT = "%Y%m%d-%H%M%S"
 RES_TIMESTAMP_FORMAT = "%Y%m%d-%H%M"
