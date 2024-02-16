@@ -1,5 +1,5 @@
 :-['src/utils.pl'].
-%:-['sim/data/flows/flows2.pl', 'sim/data/infrastructures/infrNorway.pl'].
+% :-['sim/data/flows/flows5.pl', 'sim/data/infrastructures/infrZib54.pl'].
 
 :- table transmissionTime/3.
 

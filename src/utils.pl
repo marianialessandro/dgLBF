@@ -22,4 +22,9 @@ rankedLink(Lat, BW, Deg, Rank) :-
     (maxLatency(MaxLat), minLatency(MinLat), dif(MaxLat,MinLat) -> NormLat is (Lat-MinLat)/(MaxLat-MinLat) ; NormLat is 1),
     (maxDegree(MaxDeg), minDegree(MinDeg), dif(MaxDeg, MinDeg) -> NormDeg is (MaxDeg-Deg)/(MaxDeg-MinDeg) ; NormDeg is 1),
     (maxBandwidth(MaxBW), minBandwidth(MinBW), dif(MaxBW, MinBW) -> NormBW is (MaxBW-BW)/(MaxBW-MinBW) ; NormBW is 1),
-    Rank is 0.33 * NormLat + 0.33 * NormDeg + 0.33 * NormBW.
+    weight(latency, WL), weight(bandwidth, WB), weight(degree, WD), 
+    Rank is WL*NormLat + WB*NormBW + WD*NormDeg.
+
+weight(latency, 0.33).
+weight(bandwidth, 0.33).
+weight(degree, 0.33).

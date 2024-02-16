@@ -16,7 +16,7 @@ FLOWS_FLAG	= $(shell for i in $(N_FLOWS); do echo -n "-f $$i "; done)
 TARGETS 	= clean run plot
 
 .ONESHELL:
-.PHONY: all clean
+.PHONY: all
 
 all: $(TARGETS)
 
@@ -26,16 +26,15 @@ clean-infr:
 clean-flow:
 	rm -rf $(FLOW_DIR)/*
 
-clean-res:
-	rm -rf $(RES_DIR)/*
-
 clean-plot:
 	rm -rf $(PLOT_DIR)/*
 
-clean: clean-infr clean-flow clean-res clean-plot
+clean: clean-infr clean-flow clean-plot
 
 plot:
 	$(PYTHON) $(SIM_DIR)/plot.py
 
 run:
-	$(PYTHON) $(SIM_DIR)/main.py -s 391997 $(GML_FLAG) $(FLOWS_FLAG)
+	$(PYTHON) $(SIM_DIR)/main.py -s 51162 $(GML_FLAG) $(FLOWS_FLAG)
+
+# 300997

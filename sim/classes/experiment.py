@@ -14,7 +14,7 @@ from .infrastructure import Infrastructure
 def parse_prolog(query):
     if is_prolog_functor(query):
         if prolog_name(query) != ",":
-            ans = (prolog_name(query),parse_prolog(prolog_args(query)))
+            ans = (prolog_name(query), parse_prolog(prolog_args(query)))
         else:
             ans = tuple(parse_prolog(prolog_args(query)))
     elif is_prolog_list(query):
@@ -22,18 +22,25 @@ def parse_prolog(query):
     elif is_prolog_atom(query):
         ans = query
     elif isinstance(query, dict):
-        ans = {k:parse_prolog(v) for k,v in query.items()}
+        ans = {k: parse_prolog(v) for k, v in query.items()}
     else:
         ans = query
     return ans
 
 
 class Experiment:
-    def __init__(self, num_nodes: List[int] = [], num_flows: List[int] = [], gmls: List[str] = [],
-                 max_iterations: int = 1, seed: Any = None, timeout: int = None):
-        
+    def __init__(
+        self,
+        num_nodes: List[int] = [],
+        num_flows: List[int] = [],
+        gmls: List[str] = [],
+        max_iterations: int = 1,
+        seed: Any = None,
+        timeout: int = None,
+    ):
+
         np.random.seed(seed)
-        
+
         self.num_nodes = num_nodes
         self.num_flows = num_flows
         self.gmls = gmls
@@ -42,57 +49,62 @@ class Experiment:
         self.timeout = timeout
         self.results = []
 
-
     @dispatch(str)
     def set_infrastructure(self, gml):
         self.infrastructure = Infrastructure(gml=gml)
 
-
     @dispatch(int, int)
     def set_infrastructure(self, num_nodes, seed):
-        self.infrastructure = Infrastructure(n=num_nodes, m=int(np.log2(num_nodes)), seed=seed)
-
+        self.infrastructure = Infrastructure(
+            n=num_nodes, m=int(np.log2(num_nodes)), seed=seed
+        )
 
     def set_flows(self, num_flows):
         self.flows_file = c.FLOW_FILE_PATH.format(size=num_flows)
         self.flows = []
         for i in range(num_flows):
-            start, end = np.random.choice(self.infrastructure.nodes, size=2, replace=False)
+            start, end = np.random.choice(
+                self.infrastructure.nodes, size=2, replace=False
+            )
             self.flows.append(Flow(f"f{i}", start, end, random=True))
-
 
     def upload_infr(self):
         self.infrastructure.upload()
 
-
     def upload_flows(self):
-        [f.upload(file=self.flows_file, append=(False if i == 0 else True)) for i, f in enumerate(self.flows)]
-
+        [
+            f.upload(file=self.flows_file, append=(False if i == 0 else True))
+            for i, f in enumerate(self.flows)
+        ]
 
     def upload(self):
         self.upload_infr()
         self.upload_flows()
-
 
     def save_result(self, res):
         res["Infr"] = self.infrastructure.name
         res["Flows"] = len(self.flows)
         res["Nodes"] = len(self.infrastructure.nodes)
         res["Edges"] = len(self.infrastructure.edges)
-        res["Timestamp"] = pd.Timestamp.strftime(pd.Timestamp.now(), c.EXP_TIMESTAMP_FORMAT)
+        res["Timestamp"] = pd.Timestamp.strftime(
+            pd.Timestamp.now(), c.EXP_TIMESTAMP_FORMAT
+        )
         self.results.append(res)
-
 
     def results_to_csv(self):
         if self.results:
-            df = pd.DataFrame(self.results)#, orient='index')
+            df = pd.DataFrame(self.results)
             df = df[c.COL_ORDER]
             df.set_index("Timestamp", inplace=True)
-            filepath = c.RESULTS_FILE_PATH.format(timestamp=pd.Timestamp.now().strftime(c.RES_TIMESTAMP_FORMAT))
+            name = (
+                self.seed
+                if self.seed
+                else pd.Timestamp.now().strftime(c.RES_TIMESTAMP_FORMAT)
+            )
+            filepath = c.RESULTS_FILE_PATH.format(name=name)
             c.df_to_file(df, filepath)
         else:
             print("No results yet.")
-
 
     def run_exp(self, infr: Union[int, str], flows: int, iteration: int = 1):
         self.set_infrastructure(infr)
@@ -101,12 +113,21 @@ class Experiment:
 
         with PrologMQI() as mqi:
             with mqi.create_thread() as prolog:
-                print(c.EXP_MESSAGE.format(iteration=iteration, num_flows=flows, infr=self.infrastructure.name, 
-                                           edges=len(self.infrastructure.edges), nodes=len(self.infrastructure.nodes)))
+                print(
+                    c.EXP_MESSAGE.format(
+                        iteration=iteration,
+                        num_flows=flows,
+                        infr=self.infrastructure.name,
+                        edges=len(self.infrastructure.edges),
+                        nodes=len(self.infrastructure.nodes),
+                    )
+                )
                 prolog.query("consult('{}')".format(c.SIM_FILE_PATH))
                 prolog.query(c.LOAD_INFR_QUERY.format(path=self.infrastructure.file))
                 prolog.query(c.LOAD_FLOWS_QUERY.format(path=self.flows_file))
-                prolog.query_async(c.MAIN_QUERY, find_all=False, query_timeout_seconds=self.timeout)
+                prolog.query_async(
+                    c.MAIN_QUERY, find_all=False, query_timeout_seconds=self.timeout
+                )
 
                 res = {}
                 try:
@@ -122,7 +143,7 @@ class Experiment:
 
     def run(self):
         infrs = self.gmls + self.num_nodes
-        for i,f in product(infrs, self.num_flows):
+        for i, f in product(infrs, self.num_flows):
             iterations = 0
             res = None
             while not res and iterations < self.max_iterations:
@@ -133,18 +154,23 @@ class Experiment:
             self.save_result(res)
 
     def parse_paths(self, paths):
-        return {flow: {"path": path, "budgets": budgets, "delay": delay} for (flow, (path, (budgets, delay))) in paths} 
+        return {
+            flow: {"path": path, "budgets": budgets, "delay": delay}
+            for (flow, (path, (budgets, delay))) in paths
+        }
 
     def parse_allocation(self, allocation):
         return {(s, d): bw for (s, (d, bw)) in allocation}
 
     def parse_output(self, out):
         o = parse_prolog(out)
-        return {"Output": self.parse_paths(o['Output']), 
-                "Allocation": self.parse_allocation(o['Allocation']),
-                "Inferences": o['Inferences'],
-                "Time": o['Time']}
-    
+        return {
+            "Output": self.parse_paths(o["Output"]),
+            "Allocation": self.parse_allocation(o["Allocation"]),
+            "Inferences": o["Inferences"],
+            "Time": o["Time"],
+        }
+
     def __str__(self):
         if not self.results:
             return "\nNo results yet.\n"
@@ -166,4 +192,3 @@ class Experiment:
                 res += f"Inferences: {r['Inferences']}\n"
                 res += f"Time: {round(r['Time'], 4)} (s)\n"
             return res
-

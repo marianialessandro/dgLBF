@@ -1,15 +1,25 @@
-from typing import List, Any
+from os import makedirs
+from os.path import dirname, exists
+from typing import Any, List
+
 import config as c
 import numpy as np
-from os import makedirs
-from os.path import join, dirname, exists
+
 
 class Flow:
-    def __init__(self, fid: str, start: str, end: str, 
-                packet_size: float = 0.0, burst_size: int = 0, bit_rate: float = 0.0,
-                latency_budget: float = 0.0, toleration_threshold: float = 0.0,
-                random: bool = False):
-        
+    def __init__(
+        self,
+        fid: str,
+        start: str,
+        end: str,
+        packet_size: float = 0.0,
+        burst_size: int = 0,
+        bit_rate: float = 0.0,
+        latency_budget: float = 0.0,
+        toleration_threshold: float = 0.0,
+        random: bool = False,
+    ):
+
         self.fid = fid
         self.start = start
         self.end = end
@@ -22,26 +32,27 @@ class Flow:
             self.latency_budget = latency_budget
             self.toleration_threshold = toleration_threshold
 
-        # self._file = join(c.DATA_DIR, f"flow-{self.fid}.pl")
         self.path: List[int] = []
         self.min_budget: float = 0.0
         self.max_budget: float = 0.0
         self.delay: float = 0.0
 
-    def random_setup(self):       
-        #self.packet_size = round(np.random.choice(c.PACKET_SIZE_RANGE), 3)
+    def random_setup(self):
         self.packet_size = c.PACKET_SIZE
         self.bit_rate = np.random.randint(c.BIT_RATE_MIN, c.BIT_RATE_MAX)
         self.burst_size = np.random.randint(c.BURST_SIZE_MIN, c.BURST_SIZE_MAX)
-        self.latency_budget = np.random.randint(c.LATENCY_BUDGET_MIN, c.LATENCY_BUDGET_MAX)
-        self.toleration_threshold = np.random.randint(c.TOLERATION_THRESHOLD_MIN, c.TOLERATION_THRESHOLD_MAX)
-
+        self.latency_budget = np.random.randint(
+            c.LATENCY_BUDGET_MIN, c.LATENCY_BUDGET_MAX
+        )
+        self.toleration_threshold = np.random.randint(
+            c.TOLERATION_THRESHOLD_MIN, c.TOLERATION_THRESHOLD_MAX
+        )
 
     def __str__(self):
         return c.FLOW.format(**self.__dict__)
-    
+
     def upload(self, file, append=True):
-        makedirs(dirname(file)) if not exists(dirname(file)) else None		
+        makedirs(dirname(file)) if not exists(dirname(file)) else None
         mode = "a+" if append else "w+"
         with open(file, mode) as f:
-            f.write(str(self)+"\n")
+            f.write(str(self) + "\n")
