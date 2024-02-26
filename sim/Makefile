@@ -35,4 +35,4 @@ plot:
 	$(PYTHON) $(SIM_DIR)/plot.py
 
 run:
-	$(PYTHON) $(SIM_DIR)/main.py -s 151195 $(GML_FLAG) $(FLOWS_FLAG)
+	$(PYTHON) $(SIM_DIR)/main.py -s 70799 $(GML_FLAG) $(FLOWS_FLAG)
