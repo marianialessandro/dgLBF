@@ -1,13 +1,15 @@
-from itertools import product
 import time
+from itertools import product
+from os import makedirs
+from os.path import dirname, exists
 from typing import Any, List, Union
-from multipledispatch import dispatch
 
 import config as c
+import networkx as nx
 import numpy as np
 import pandas as pd
+from multipledispatch import dispatch
 from swiplserver import *
-import networkx as nx
 
 from .flow import Flow
 from .infrastructure import Infrastructure
@@ -79,16 +81,20 @@ class Experiment:
         self.infrastructure.upload()
 
     def upload_flows(self):
-        for i, f in enumerate(self.flows):
-            f.upload(
-                file=self.flows_file,
-                append=(False if i == 0 else True),
-            )
-        with open(self.flows_file, "a+") as file:
-            file.write("\n")
 
-        for i, f in enumerate(self.flows):
-            f.upload_flow_data(file=self.flows_file)
+        flows = [str(f) for f in self.flows]
+        data_reqs = [f.data_reqs() for f in self.flows]
+        p_protection = [f.path_protection() for f in self.flows]
+
+        if not exists(dirname(self.flows_file)):
+            makedirs(dirname(self.flows_file))
+
+        with open(self.flows_file, "w+") as f:
+            f.write("\n".join(flows) + "\n")
+            f.write("\n")
+            f.write("\n".join(data_reqs) + "\n")
+            f.write("\n")
+            f.write("\n".join(p_protection) + "\n")
 
         for f in self.flows:
             paths = self.infrastructure.simple_paths(
@@ -118,7 +124,21 @@ class Experiment:
 
     def results_to_csv(self):
         if self.results:
-            df = pd.DataFrame(self.results)
+            df = pd.DataFrame(
+                self.results,
+                columns=[
+                    "Timestamp",
+                    "Infr",
+                    "Flows",
+                    "Nodes",
+                    "Edges",
+                    "Time",
+                    "Inferences",
+                    "Output",
+                    "Allocation",
+                    "Iterations",
+                ],
+            )
             df.set_index("Timestamp", inplace=True)
             name = (
                 str(self.seed)

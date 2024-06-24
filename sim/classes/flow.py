@@ -56,17 +56,8 @@ class Flow:
     def __str__(self):
         return c.FLOW.format(**self.__dict__)
 
-    def data(self):
-        return c.FLOW_DATA.format(**self.__dict__)
+    def data_reqs(self):
+        return c.DATA_REQS.format(**self.__dict__)
 
-    def upload(self, file, append=True):
-        makedirs(dirname(file)) if not exists(dirname(file)) else None
-        mode = "a+" if append else "w+"
-        with open(file, mode) as f:
-            f.write(str(self) + "\n")
-
-    def upload_flow_data(self, file, append=True):
-        makedirs(dirname(file)) if not exists(dirname(file)) else None
-        mode = "a+" if append else "w+"
-        with open(file, mode) as f:
-            f.write(self.data() + "\n")
+    def path_protection(self):
+        return c.PATH_PROTECTION.format(**self.__dict__)

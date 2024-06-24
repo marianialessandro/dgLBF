@@ -13,14 +13,19 @@ link(nStart, n5, 20, 100, 0.99).
 link(n1, nEnd, 3, 20, 0.99).
 link(n2, nEnd, 6, 50, 0.99).
 
-% flow(FlowId, NStart, NEnd, Reliability [%], Replicas [#])
-flow(f1, nStart, nEnd, 0.92, 1).
-flow(f2, nStart, nEnd, 0.92, 1).
-flow(f3, nStart, nEnd, 0.92, 1).
+% flow(FlowId, NStart, NEnd).
+flow(f1, nStart, nEnd).
+flow(f2, nStart, nEnd).
+flow(f3, nStart, nEnd).
 
-% flowData(FlowId, PacketSize [Mb], BurstSize [#packets], BitRate [Mbps], E2ELatencyBudget [ms], TolerationThreshold [ms])
-flowData(f1, 0.008, 3, 5, 50, 10).
-flowData(f2, 0.01, 4, 10, 100, 10).
-flowData(f3, 0.008, 5, 8, 40, 10).
+% dataReqs(FlowId, PacketSize [Mb], BurstSize [#packets], BitRate [Mbps], E2ELatencyBudget [ms], TolerationThreshold [ms])
+dataReqs(f1, 0.008, 3, 5, 50, 10).
+dataReqs(f2, 0.01, 4, 10, 100, 10).
+dataReqs(f3, 0.008, 5, 8, 40, 10).
+
+% pathProtection(FlowId, Reliability [%], Replicas [#])
+pathProtection(f1, 0.92, 1).
+pathProtection(f2, 0.92, 1).
+pathProtection(f3, 0.92, 1).
 
 candidate(_, [('nStart', 'n1'), ('n1', 'nEnd')]).
