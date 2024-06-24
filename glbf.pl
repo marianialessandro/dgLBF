@@ -11,7 +11,7 @@ glbf(Paths, Capacities) :-
     validPaths(PPaths, Paths).
     
 possiblePaths(Paths, Capacities) :-
-    findall(FlowId, flow(FlowId, _, _, _, _, _, _, _, _, _), FlowIds),
+    findall(FlowId, flow(FlowId, _, _, _, _), FlowIds),
     possiblePaths(FlowIds, Capacities, Paths).
     
 validPaths(PPaths, Paths) :-
@@ -20,7 +20,7 @@ validPaths(PPaths, Paths) :-
 
 possiblePaths(FlowIds, Alloc, Out) :- possiblePaths(FlowIds, [], Alloc, [], Out).
 possiblePaths([FlowId|FlowIds], Alloc, NewAlloc, OldOut, Out) :-
-    flow(FlowId, _, _, _, _, _, _, _, _, Rep),
+    flow(FlowId, _, _, _, Rep),
     findall(1, candidate((FlowId, _), _), Cs), length(Cs, L), L >= Rep, % too few candidates
     replicas(FlowId, Rep, Alloc, TmpAlloc, [], OldOut, FOut),
     possiblePaths(FlowIds, TmpAlloc, NewAlloc, FOut, Out).    
@@ -32,7 +32,8 @@ replicas(FlowId, N, Alloc, NewAlloc, PIds, OldOut, Out) :-
 replicas(_, 0, Alloc, Alloc, _, Out, Out). % N == 0. 
 
 possiblePath(FlowId, Alloc, NewAlloc, PId, PIds, (Path, NewMinB, Delay)) :-
-    flow(FlowId, _, _, PacketSize, _, BitRate, Budget, Th, Rel, _),
+    flow(FlowId, _, _, Rel, _),
+    flowData(FlowId, PacketSize, _, BitRate, Budget, Th),
     MinB is Budget - Th,
     candidate((FlowId, PId), CPath), \+ member(PId, PIds),
     path(CPath, MinB, Rel, Alloc, PacketSize, BitRate, 1, NewMinB),
@@ -60,7 +61,7 @@ delay(PathMinB, Path, Delay) :- PathMinB > 0, length(Path, L), Hops is L-1, Dela
 delay(PathMinB, _, 0) :- PathMinB < 0.
 
 compatiblePaths([(FlowId, PId, (P, MinB, D))|Fs], Paths, [(FlowId, PId, (P, (MinB,MaxB), D))|NewFs]) :-
-    flow(FlowId, _, _, PacketSize, BurstSize, _, _, Th, _, _), 
+    flowData(FlowId, PacketSize, BurstSize, _, _, Th), 
     totQTime(P, FlowId, PId, PacketSize, BurstSize, Paths, TotQTime),
     MaxB is MinB + 2*Th - TotQTime, MaxB >= 0,
     compatiblePaths(Fs, Paths, NewFs).
@@ -75,5 +76,5 @@ totQTime([S,D|Path], FId, PId, PacketSize, BurstSize, Paths, TotQTime) :-
 totQTime([_], _, _, _, _, _, 0).
 
 relevantFlow(CurrF, CurrP, N, Paths, PB) :-
-    dif(F, CurrF), dif(P, CurrP), member((F,P,Path),Paths), member(N, Path),
-    flow(F,_,_,P,B,_,_,_,_,_), PB is P * B.
+    dif((F,P), (CurrF,CurrP)), member((F,P,Path),Paths), member(N, Path),
+    flowData(F,P,B,_,_,_), PB is P * B.

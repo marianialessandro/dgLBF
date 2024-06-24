@@ -37,9 +37,6 @@ class Flow:
             self.replicas = replicas
 
         self.path: List[int] = []
-        self.min_budget: float = 0.0
-        self.max_budget: float = 0.0
-        self.delay: float = 0.0
 
     def random_setup(self):
         self.packet_size = c.PACKET_SIZE
@@ -59,8 +56,17 @@ class Flow:
     def __str__(self):
         return c.FLOW.format(**self.__dict__)
 
+    def data(self):
+        return c.FLOW_DATA.format(**self.__dict__)
+
     def upload(self, file, append=True):
         makedirs(dirname(file)) if not exists(dirname(file)) else None
         mode = "a+" if append else "w+"
         with open(file, mode) as f:
             f.write(str(self) + "\n")
+
+    def upload_flow_data(self, file, append=True):
+        makedirs(dirname(file)) if not exists(dirname(file)) else None
+        mode = "a+" if append else "w+"
+        with open(file, mode) as f:
+            f.write(self.data() + "\n")

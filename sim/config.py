@@ -87,7 +87,8 @@ LOAD_INFR_QUERY = "once(loadInfrastructure('{path}'))."
 LOAD_FLOWS_QUERY = "once(loadFlows('{path}'))."
 
 # --- Flow templates ---
-FLOW = "flow({fid}, {start}, {end}, {packet_size}, {burst_size}, {bit_rate}, {latency_budget}, {toleration_threshold}, {reliability}, {replicas})."
+FLOW = "flow({fid}, {start}, {end}, {reliability}, {replicas})."
+FLOW_DATA = "flowData({fid}, {packet_size}, {burst_size}, {bit_rate}, {latency_budget}, {toleration_threshold})."
 CANDIDATE = "candidate(({fid}, {pid}), {path})."
 
 # --- Infrastructure templates ---

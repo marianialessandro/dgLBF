@@ -84,6 +84,11 @@ class Experiment:
                 file=self.flows_file,
                 append=(False if i == 0 else True),
             )
+        with open(self.flows_file, "a+") as file:
+            file.write("\n")
+
+        for i, f in enumerate(self.flows):
+            f.upload_flow_data(file=self.flows_file)
 
         for f in self.flows:
             paths = self.infrastructure.simple_paths(
@@ -184,7 +189,6 @@ class Experiment:
 
     def parse_output(self, out):
         o = parse_prolog(out)
-        print(o)
         return {
             "Output": self.parse_paths(o["Output"]),
             "Allocation": self.parse_allocation(o["Allocation"]),
