@@ -27,7 +27,6 @@ class Infrastructure(nx.DiGraph):
         self.to_directed()
         self.diameter = nx.diameter(self)
 
-        self.degrees = self.out_degree()
         self._size = len(self.nodes)
         self.file = c.INFRA_FILE_PATH.format(name=(gml.title() if gml else self._size))
         self.name = basename(self.file).split(".")[0]
@@ -42,32 +41,9 @@ class Infrastructure(nx.DiGraph):
             s, d = str(s).lower(), str(d).lower()
             lat = np.random.randint(c.LINK_LAT_MIN, c.LINK_LAT_MAX)
             bw = np.random.randint(c.LINK_BW_MIN, c.LINK_BW_MAX)
-            self.add_edge(s, d, lat=lat, bw=bw)
-            self.add_edge(d, s, lat=lat, bw=bw)
-
-    def str_min_max_latency(self):
-        min_latency = min([a["lat"] for _, _, a in self.edges(data=True)])
-        max_latency = max([a["lat"] for _, _, a in self.edges(data=True)])
-        min_latency = c.MIN_LATENCY.format(min_latency=min_latency)
-        max_latency = c.MAX_LATENCY.format(max_latency=max_latency)
-
-        return min_latency + "\n" + max_latency
-
-    def str_min_max_bw(self):
-        min_bw = min([a["bw"] for _, _, a in self.edges(data=True)])
-        max_bw = max([a["bw"] for _, _, a in self.edges(data=True)])
-        min_bw = c.MIN_BW.format(min_bw=min_bw)
-        max_bw = c.MAX_BW.format(max_bw=max_bw)
-
-        return min_bw + "\n" + max_bw
-
-    def str_min_max_degrees(self):
-        min_degree = min([d for n, d in self.degrees])
-        max_degree = max([d for n, d in self.degrees])
-        min_degree = c.MIN_DEGREE.format(min_degree=min_degree)
-        max_degree = c.MAX_DEGREE.format(max_degree=max_degree)
-
-        return min_degree + "\n" + max_degree
+            rel = round(np.random.uniform(c.LINK_REL_MIN, c.LINK_REL_MAX), 4)
+            self.add_edge(s, d, lat=lat, bw=bw, rel=rel)
+            self.add_edge(d, s, lat=lat, bw=bw, rel=rel)
 
     def str_nodes(self):
         return "\n".join(
@@ -80,39 +56,33 @@ class Infrastructure(nx.DiGraph):
     def str_links(self):
         return "\n".join(
             [
-                c.LINK.format(source=str(s), dest=str(d), lat=a["lat"], bw=a["bw"])
+                c.LINK.format(
+                    source=str(s), dest=str(d), lat=a["lat"], bw=a["bw"], rel=a["rel"]
+                )
                 for s, d, a in self.edges(data=True)
             ]
-        )
-
-    def str_degrees(self):
-        return "\n".join(
-            [c.DEGREE.format(nid=str(n), degree=str(d)) for n, d in self.degrees]
         )
 
     def __str__(self):
         res = self.str_nodes() + "\n\n"
         res += self.str_links() + "\n\n"
-        res += self.str_degrees() + "\n\n"
-        res += self.str_min_max_degrees() + "\n\n"
-        res += self.str_min_max_latency() + "\n\n"
-        res += self.str_min_max_bw() + "\n"
         return res
 
     def __repr__(self):
         return super().__repr__()
 
-    def simple_paths(self, source, target):
-
-        start_time = time.time()
-        paths = list(
-            nx.all_simple_edge_paths(self, source, target, cutoff=self.diameter)
-        )
+    def simple_paths(self, source, target, disjoint=False):
+        if disjoint:
+            paths = list(
+                nx.edge_disjoint_paths(self, source, target, cutoff=self.diameter)
+            )
+            paths = [list(nx.utils.pairwise(p)) for p in paths]
+        else:
+            paths = list(
+                nx.all_simple_edge_paths(self, source, target, cutoff=self.diameter)
+            )
         # sort by number of hops between source and target
         paths.sort(key=lambda x: len(x))
-        end_time = time.time()
-        # with open("path_time.txt", "a") as f:
-        #     f.write(f"{self.name} - {end_time - start_time}\n")
 
         if not paths:
             print(f"No path found between {source} and {target}.")

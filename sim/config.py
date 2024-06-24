@@ -65,13 +65,17 @@ FIG_OPTIONS = {
 NODE_LAT_MIN, NODE_LAT_MAX = 1, 5
 LINK_LAT_MIN, LINK_LAT_MAX = 1, 5
 LINK_BW_MIN, LINK_BW_MAX = 500, 1500
+LINK_REL_MIN, LINK_REL_MAX = 0.98, 0.999
 
 # --- Flow config ---
+
 PACKET_SIZE = 0.008
 BURST_SIZE_MIN, BURST_SIZE_MAX = 2, 4
 BIT_RATE_MIN, BIT_RATE_MAX = 2, 8
 LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 30, 60
 TOLERATION_THRESHOLD_MIN, TOLERATION_THRESHOLD_MAX = 10, 20
+RELIABILITY_MIN, RELIABILITY_MAX = 0.9, 0.95
+REPLICAS_MIN, REPLICAS_MAX = 1, 4
 
 # PACKET_SIZE_MIN, PACKET_SIZE_MAX, PACKET_SIZE_STEP = 0.001, 0.01, 0.001
 # PACKET_SIZE_RANGE = np.arange(PACKET_SIZE_MIN, PACKET_SIZE_MAX + PACKET_SIZE_STEP, PACKET_SIZE_STEP)
@@ -83,32 +87,13 @@ LOAD_INFR_QUERY = "once(loadInfrastructure('{path}'))."
 LOAD_FLOWS_QUERY = "once(loadFlows('{path}'))."
 
 # --- Flow templates ---
-FLOW = "flow({fid}, {start}, {end}, {packet_size}, {burst_size}, {bit_rate}, {latency_budget}, {toleration_threshold})."
-CANDIDATE = "candidate({fid}, {path})."
+FLOW = "flow({fid}, {start}, {end}, {packet_size}, {burst_size}, {bit_rate}, {latency_budget}, {toleration_threshold}, {reliability}, {replicas})."
+CANDIDATE = "candidate(({fid}, {pid}), {path})."
 
 # --- Infrastructure templates ---
 NODE = "node({nid}, {latency_budget})."
-LINK = "link({source}, {dest}, {lat}, {bw})."
+LINK = "link({source}, {dest}, {lat}, {bw}, {rel})."
 DEGREE = "degree({nid}, {degree})."
-MAX_DEGREE = "maxDegree({max_degree})."
-MIN_DEGREE = "minDegree({min_degree})."
-MAX_LATENCY = "maxLatency({max_latency})."
-MIN_LATENCY = "minLatency({min_latency})."
-MAX_BW = "maxBandwidth({max_bw})."
-MIN_BW = "minBandwidth({min_bw})."
-
-
-# --- Auxiliary functions ---
-def timeit(func):
-    @wraps(func)
-    def measure_time(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        print("{} took {} seconds.".format(func.__name__, end_time - start_time))
-        return result
-
-    return measure_time
 
 
 def df_to_file(df: pd.DataFrame, file_path: Path):

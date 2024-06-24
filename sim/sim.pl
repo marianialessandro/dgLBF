@@ -17,7 +17,7 @@ sim_glbf(Out, Alloc, Infs, Time) :-
 
 loadInfrastructure(Path) :-
     open(Path, read, Str),
-    (retractall(node(_,_)), retractall(link(_,_,_,_)); true),
+    (retractall(node(_,_)), retractall(link(_,_,_,_,_)); true),
     readAndAssert(Str).
 
 loadFlows(Path) :-

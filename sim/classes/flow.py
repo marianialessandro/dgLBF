@@ -17,6 +17,8 @@ class Flow:
         bit_rate: float = 0.0,
         latency_budget: float = 0.0,
         toleration_threshold: float = 0.0,
+        reliability: float = 0.0,
+        replicas: int = 0,
         random: bool = False,
     ):
 
@@ -31,6 +33,8 @@ class Flow:
             self.bit_rate = bit_rate
             self.latency_budget = latency_budget
             self.toleration_threshold = toleration_threshold
+            self.reliability = reliability
+            self.replicas = replicas
 
         self.path: List[int] = []
         self.min_budget: float = 0.0
@@ -47,6 +51,10 @@ class Flow:
         self.toleration_threshold = np.random.randint(
             c.TOLERATION_THRESHOLD_MIN, c.TOLERATION_THRESHOLD_MAX
         )
+        self.reliability = round(
+            np.random.uniform(c.RELIABILITY_MIN, c.RELIABILITY_MAX), 4
+        )
+        self.replicas = np.random.randint(c.REPLICAS_MIN, c.REPLICAS_MAX)
 
     def __str__(self):
         return c.FLOW.format(**self.__dict__)

@@ -1,4 +1,5 @@
 from itertools import product
+import time
 from typing import Any, List, Union
 from multipledispatch import dispatch
 
@@ -85,12 +86,14 @@ class Experiment:
             )
 
         for f in self.flows:
-            paths = self.infrastructure.simple_paths(f.start, f.end)
+            paths = self.infrastructure.simple_paths(
+                f.start, f.end, disjoint=(f.replicas > 1)
+            )
             with open(self.flows_file, "a+") as file:
                 file.write("\n")
-                for path in paths:
+                for idx, path in enumerate(paths):
                     candidate = c.CANDIDATE.format(
-                        fid=f.fid, path=str(path).replace("'", "")
+                        fid=f.fid, pid=f"p{idx}", path=str(path).replace("'", "")
                     )
                     file.write(candidate + "\n")
 
@@ -111,7 +114,6 @@ class Experiment:
     def results_to_csv(self):
         if self.results:
             df = pd.DataFrame(self.results)
-            df = df[c.COL_ORDER]
             df.set_index("Timestamp", inplace=True)
             name = (
                 str(self.seed)
@@ -124,9 +126,12 @@ class Experiment:
             print("No results yet.")
 
     def run_exp(self, infr: Union[int, str], flows: int, iteration: int = 1):
+        start_time = time.time()
         self.set_infrastructure(infr)
         self.set_flows(flows)
         self.upload()
+        print(f"Upload time {time.time() - start_time} seconds")
+
         with PrologMQI() as mqi:
             with mqi.create_thread() as prolog:
                 print(
@@ -144,7 +149,6 @@ class Experiment:
                 prolog.query_async(
                     c.MAIN_QUERY, find_all=False, query_timeout_seconds=self.timeout
                 )
-
                 res = {}
                 try:
                     q = prolog.query_async_result()
@@ -171,8 +175,8 @@ class Experiment:
 
     def parse_paths(self, paths):
         return {
-            flow: {"path": path, "budgets": budgets, "delay": delay}
-            for (flow, (path, (budgets, delay))) in paths
+            (flow, pid): {"path": path, "budgets": budgets, "delay": delay}
+            for (flow, (pid, (path, (budgets, delay)))) in paths
         }
 
     def parse_allocation(self, allocation):
@@ -180,6 +184,7 @@ class Experiment:
 
     def parse_output(self, out):
         o = parse_prolog(out)
+        print(o)
         return {
             "Output": self.parse_paths(o["Output"]),
             "Allocation": self.parse_allocation(o["Allocation"]),
