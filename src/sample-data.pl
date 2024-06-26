@@ -35,3 +35,7 @@ antiAffinity(f3, [f1]).
 
 % candidate(PathId, NStart, NEnd, Path)
 candidate(p0_nStart_nEnd, nStart, nEnd, ['nStart', 'n1', 'nEnd']).
+
+
+% OUTPUT FORMAT
+% [(FlowId, PathId, (Path, Reliability, (MinBudget, MaxBudget), Delay))]

@@ -247,8 +247,13 @@ class Experiment:
 
     def parse_paths(self, paths):
         return {
-            (flow, pid): {"path": path, "budgets": budgets, "delay": delay}
-            for (flow, (pid, (path, (budgets, delay)))) in paths
+            (flow, pid): {
+                "path": path,
+                "reliability": reliability,
+                "budgets": budgets,
+                "delay": delay,
+            }
+            for (flow, (pid, (path, (reliability, (budgets, delay))))) in paths
         }
 
     def parse_allocation(self, allocation):
