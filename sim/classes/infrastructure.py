@@ -74,12 +74,12 @@ class Infrastructure(nx.DiGraph):
     def simple_paths(self, source, target, disjoint=False):
         if disjoint:
             paths = list(
-                nx.edge_disjoint_paths(self, source, target, cutoff=self.diameter)
+                nx.node_disjoint_paths(self, source, target, cutoff=self.diameter)
             )
             paths = [list(nx.utils.pairwise(p)) for p in paths]
         else:
             paths = list(
-                nx.all_simple_edge_paths(self, source, target, cutoff=self.diameter)
+                nx.all_simple_paths(self, source, target, cutoff=self.diameter)
             )
         # sort by number of hops between source and target
         paths.sort(key=lambda x: len(x))

@@ -90,7 +90,7 @@ LOAD_FLOWS_QUERY = "once(loadFlows('{path}'))."
 # --- Flow templates ---
 FLOW = "flow({fid}, {start}, {end})."
 DATA_REQS = "dataReqs({fid}, {packet_size}, {burst_size}, {bit_rate}, {latency_budget}, {toleration_threshold})."
-PATH_PROTECTION = "pathProtection({fid}, {reliability}, {replicas})."
+PATH_PROTECTION = "reliabilityReqs({fid}, {reliability}, {replicas})."
 ANTI_AFFINITY = "antiAffinity({fid}, {anti_affinity})."
 
 # --- Infrastructure templates ---

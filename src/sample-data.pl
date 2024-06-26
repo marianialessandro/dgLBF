@@ -23,10 +23,10 @@ dataReqs(f1, 0.008, 3, 5, 50, 10).
 dataReqs(f2, 0.01, 4, 10, 100, 10).
 dataReqs(f3, 0.008, 5, 8, 40, 10).
 
-% pathProtection(FlowId, Reliability [%], Replicas [#])
-pathProtection(f1, 0.92, 1).
-pathProtection(f2, 0.92, 1).
-pathProtection(f3, 0.92, 1).
+% reliabilityReqs(FlowId, Reliability [%], Replicas [#])
+reliabilityReqs(f1, 0.92, 1).
+reliabilityReqs(f2, 0.92, 1).
+reliabilityReqs(f3, 0.92, 1).
 
 % antiAffinity(FlowId, [FlowIds])
 antiAffinity(f1, [f2, f3]).
@@ -34,4 +34,4 @@ antiAffinity(f2, [f1]).
 antiAffinity(f3, [f1]).
 
 % candidate(PathId, NStart, NEnd, Path)
-candidate(p0_nStart_nEnd, nStart, nEnd, [('nStart', 'n1'), ('n1', 'nEnd')]).
+candidate(p0_nStart_nEnd, nStart, nEnd, ['nStart', 'n1', 'nEnd']).

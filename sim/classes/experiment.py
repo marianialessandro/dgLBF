@@ -91,7 +91,6 @@ class Experiment:
 
         aa_matrix = np.maximum(aa_matrix, aa_matrix.T)
         flow_mask = np.random.rand(n_flows) < flow_prob
-        print(flow_mask)
 
         for i in range(n_flows):
             if not flow_mask[i]:
@@ -128,7 +127,6 @@ class Experiment:
             },
         )
 
-        print(aa_reqs)
         if aa_reqs and any(aa_reqs.values()):
             for f, anti_aff in aa_reqs.items():
                 if anti_aff:
