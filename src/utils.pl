@@ -11,3 +11,5 @@ usedBandwidth(N1, N2, Alloc, 0) :- \+ member((N1,N2,_), Alloc).
 
 flatPath([(X,_)|Rest], [X|FlattenedRest]) :- flatPath(Rest, FlattenedRest).
 flatPath([(C,D)], [C,D]).
+
+middle([_|Rest], Middle) :- append(Middle, [_], Rest).

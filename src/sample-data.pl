@@ -28,4 +28,10 @@ pathProtection(f1, 0.92, 1).
 pathProtection(f2, 0.92, 1).
 pathProtection(f3, 0.92, 1).
 
-candidate(_, [('nStart', 'n1'), ('n1', 'nEnd')]).
+% antiAffinity(FlowId, [FlowIds])
+antiAffinity(f1, [f2, f3]).
+antiAffinity(f2, [f1]).
+antiAffinity(f3, [f1]).
+
+% candidate(PathId, NStart, NEnd, Path)
+candidate(p0_nStart_nEnd, nStart, nEnd, [('nStart', 'n1'), ('n1', 'nEnd')]).

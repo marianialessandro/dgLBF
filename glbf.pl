@@ -1,6 +1,6 @@
 :-['src/utils.pl'].
 :- table transmissionTime/3.
-%:-['sim/data/flows/flows20.pl', 'sim/data/infrastructures/infr20.pl'].
+% :-['sim/data/flows/flows50.pl', 'sim/data/infrastructures/infr100.pl'].
 
 :- set_prolog_flag(answer_write_options,[max_depth(0), spacing(next_argument)]).
 :- set_prolog_flag(stack_limit, 64 000 000 000).
@@ -20,27 +20,32 @@ validPaths(PPaths, Paths) :-
 
 possiblePaths(FlowIds, Alloc, Out) :- possiblePaths(FlowIds, [], Alloc, [], Out).
 possiblePaths([FlowId|FlowIds], Alloc, NewAlloc, OldOut, Out) :-
-    pathProtection(FlowId, _, Rep),
-    findall(1, candidate((FlowId, _), _), Cs), length(Cs, L), L >= Rep, % too few candidates
+    flow(FlowId, S, D), pathProtection(FlowId, _, Rep),
+    findall(1, candidate(_, S, D, _), Cs), length(Cs, L), L >= Rep, % too few candidate paths
     replicas(FlowId, Rep, Alloc, TmpAlloc, [], OldOut, FOut),
     possiblePaths(FlowIds, TmpAlloc, NewAlloc, FOut, Out).    
 possiblePaths([], Alloc, Alloc, Out, Out).
 
 replicas(FlowId, N, Alloc, NewAlloc, PIds, OldOut, Out) :-
-    N > 0, possiblePath(FlowId, Alloc, TmpAlloc, PId, PIds, FOut),
+    N > 0, possiblePath(FlowId, Alloc, TmpAlloc, PId, PIds, OldOut, FOut),
     N1 is N-1, replicas(FlowId, N1, TmpAlloc, NewAlloc, [PId|PIds], [(FlowId, PId, FOut)|OldOut], Out).
 replicas(_, 0, Alloc, Alloc, _, Out, Out). % N == 0. 
 
-possiblePath(FlowId, Alloc, NewAlloc, PId, PIds, (Path, NewMinB, Delay)) :-
-    pathProtection(FlowId, Rel, _),
+possiblePath(FlowId, Alloc, NewAlloc, PId, PIds, Out, (Path, NewMinB, Delay)) :-
+    flow(FlowId, S, D), pathProtection(FlowId, Rel, _),
     dataReqs(FlowId, PacketSize, _, BitRate, Budget, Th),
+    validCandidate(FlowId, (S,D), PId, CPath, PIds, Out),
     MinB is Budget - Th,
-    candidate((FlowId, PId), CPath), \+ member(PId, PIds),
     path(CPath, MinB, Rel, Alloc, PacketSize, BitRate, 1, NewMinB),
     delay(NewMinB, CPath, Delay), updateCapacities(CPath, BitRate, Alloc, NewAlloc),
     flatPath(CPath, Path).
-possiblePath(FlowId, _, _, _, _, ([], -1, 0)) :-
-    \+ candidate((FlowId, _), _), !.
+
+validCandidate(FId, (S,D), PId, CPath, PIds, Out) :- 
+    candidate(PId, S, D, CPath), \+ member(PId, PIds),
+    flatPath(CPath, FPath), middle(FPath, P),
+    middleDisjoint(P, PIds),
+    findall(AFP, (antiAffinity(FId, Fs), member(F, Fs), member((F,_,AFP,_,_), Out)), AFPs),
+    antiAffinityOK(FPath, AFPs).
 
 path([(S, N)|Rest], OldMinB, ReqRel, Alloc, PacketSize, BitRate, PathRel, NewMinB) :-
     link(S, N, TProp, Bandwidth, FeatRel),
@@ -78,3 +83,14 @@ totQTime([_], _, _, _, _, _, 0).
 relevantFlow(CurrF, CurrP, N, Paths, PB) :-
     dif((F,P), (CurrF,CurrP)), member((F,P,Path),Paths), member(N, Path),
     dataReqs(F,P,B,_,_,_), PB is P * B.
+
+middleDisjoint(CP, [PId|PIds]) :- 
+    candidate(PId, _, _, Path), flatPath(Path, FPath), middle(FPath, FP), 
+    intersection(CP, FP, []),
+    middleDisjoint(CP, PIds).
+middleDisjoint(_, []).
+
+antiAffinityOK(CPath, [AFPath|AFPs]) :-
+    intersection(CPath, AFPath, []), antiAffinityOK(CPath, AFPs).
+antiAffinityOK(_, []).
+    

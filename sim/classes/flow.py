@@ -1,6 +1,6 @@
 from os import makedirs
 from os.path import dirname, exists
-from typing import List
+from typing import Dict, List
 
 import config as c
 import numpy as np

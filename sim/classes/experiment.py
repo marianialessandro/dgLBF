@@ -1,3 +1,5 @@
+from collections import defaultdict
+import random
 import time
 from itertools import product
 from os import makedirs
@@ -42,9 +44,8 @@ class Experiment:
         seed: Any = None,
         timeout: int = None,
     ):
-
         np.random.seed(seed)
-
+        random.seed(seed)
         self.num_nodes = num_nodes
         self.num_flows = num_flows
         self.gmls = gmls
@@ -72,44 +73,90 @@ class Experiment:
             )
             self.flows.append(Flow(f"f{i}", start, end, random=True))
 
-        # sort flows by number of hops between start and end
         self.flows.sort(
             key=lambda f: nx.shortest_path_length(self.infrastructure, f.start, f.end)
         )
 
-    def upload_infr(self):
-        self.infrastructure.upload()
+    def get_anti_affinity(self, flow_ids, flow_prob=c.ANTI_AFFINITY_PROB):
+
+        random.shuffle(flow_ids)
+
+        n_flows = len(flow_ids)
+        prob = 1 / (n_flows - 1)
+
+        rnd_matrix = np.random.rand(n_flows, n_flows)
+        aa_matrix = (rnd_matrix < prob).astype(int)
+
+        np.fill_diagonal(aa_matrix, 0)
+
+        aa_matrix = np.maximum(aa_matrix, aa_matrix.T)
+        flow_mask = np.random.rand(n_flows) < flow_prob
+        print(flow_mask)
+
+        for i in range(n_flows):
+            if not flow_mask[i]:
+                aa_matrix[i, :] = 0
+                aa_matrix[:, i] = 0
+
+        anti_affinity = {
+            flow_ids[i]: [flow_ids[j] for j in range(n_flows) if aa_matrix[i, j] == 1]
+            for i in range(n_flows)
+        }
+
+        return anti_affinity
 
     def upload_flows(self):
 
         flows = [str(f) for f in self.flows]
         data_reqs = [f.data_reqs() for f in self.flows]
         p_protection = [f.path_protection() for f in self.flows]
+        aa_reqs = self.get_anti_affinity([f.fid for f in self.flows])
 
         if not exists(dirname(self.flows_file)):
             makedirs(dirname(self.flows_file))
 
-        with open(self.flows_file, "w+") as f:
-            f.write("\n".join(flows) + "\n")
-            f.write("\n")
-            f.write("\n".join(data_reqs) + "\n")
-            f.write("\n")
-            f.write("\n".join(p_protection) + "\n")
+        result = ""
+        result += "\n".join(flows) + "\n\n"
+        result += "\n".join(data_reqs) + "\n\n"
+        result += "\n".join(p_protection) + "\n\n"
 
-        for f in self.flows:
-            paths = self.infrastructure.simple_paths(
-                f.start, f.end, disjoint=(f.replicas > 1)
-            )
-            with open(self.flows_file, "a+") as file:
-                file.write("\n")
-                for idx, path in enumerate(paths):
-                    candidate = c.CANDIDATE.format(
-                        fid=f.fid, pid=f"p{idx}", path=str(path).replace("'", "")
+        paths = defaultdict(
+            lambda: None,
+            {
+                (f.start, f.end): self.infrastructure.simple_paths(f.start, f.end)
+                for f in self.flows
+            },
+        )
+
+        print(aa_reqs)
+        if aa_reqs and any(aa_reqs.values()):
+            for f, anti_aff in aa_reqs.items():
+                if anti_aff:
+                    result += (
+                        c.ANTI_AFFINITY.format(
+                            fid=f, anti_affinity=str(anti_aff).replace("'", "")
+                        )
+                        + "\n"
                     )
-                    file.write(candidate + "\n")
+            result += "\n"
+
+        for (source, target), ps in paths.items():
+            for idx, path in enumerate(ps):
+                result += (
+                    c.CANDIDATE.format(
+                        pid=f"p{idx}_{source}_{target}",
+                        path=str(path).replace("'", ""),
+                        source=source,
+                        target=target,
+                    )
+                    + "\n"
+                )
+
+        with open(self.flows_file, "w+") as file:
+            file.write(result)
 
     def upload(self):
-        self.upload_infr()
+        self.infrastructure.upload()
         self.upload_flows()
 
     def save_result(self, res):
@@ -154,8 +201,10 @@ class Experiment:
         start_time = time.time()
         self.set_infrastructure(infr)
         self.set_flows(flows)
+        print(f"Setting time {time.time() - start_time} seconds")
+        start_time = time.time()
         self.upload()
-        print(f"Upload time {time.time() - start_time} seconds")
+        print(f"Uploading time {time.time() - start_time} seconds")
 
         with PrologMQI() as mqi:
             with mqi.create_thread() as prolog:

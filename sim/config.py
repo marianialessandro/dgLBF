@@ -76,6 +76,7 @@ LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 30, 60
 TOLERATION_THRESHOLD_MIN, TOLERATION_THRESHOLD_MAX = 10, 20
 RELIABILITY_MIN, RELIABILITY_MAX = 0.9, 0.95
 REPLICAS_MIN, REPLICAS_MAX = 1, 4
+ANTI_AFFINITY_PROB = 0.5
 
 # PACKET_SIZE_MIN, PACKET_SIZE_MAX, PACKET_SIZE_STEP = 0.001, 0.01, 0.001
 # PACKET_SIZE_RANGE = np.arange(PACKET_SIZE_MIN, PACKET_SIZE_MAX + PACKET_SIZE_STEP, PACKET_SIZE_STEP)
@@ -90,12 +91,13 @@ LOAD_FLOWS_QUERY = "once(loadFlows('{path}'))."
 FLOW = "flow({fid}, {start}, {end})."
 DATA_REQS = "dataReqs({fid}, {packet_size}, {burst_size}, {bit_rate}, {latency_budget}, {toleration_threshold})."
 PATH_PROTECTION = "pathProtection({fid}, {reliability}, {replicas})."
-CANDIDATE = "candidate(({fid}, {pid}), {path})."
+ANTI_AFFINITY = "antiAffinity({fid}, {anti_affinity})."
 
 # --- Infrastructure templates ---
 NODE = "node({nid}, {latency_budget})."
 LINK = "link({source}, {dest}, {lat}, {bw}, {rel})."
 DEGREE = "degree({nid}, {degree})."
+CANDIDATE = "candidate({pid}, {source}, {target}, {path})."
 
 
 def df_to_file(df: pd.DataFrame, file_path: Path):
