@@ -1,5 +1,6 @@
 :-['src/utils.pl'].
 :- table transmissionTime/3.
+:-['src/sample-data.pl'].
 
 :- set_prolog_flag(answer_write_options,[max_depth(0), spacing(next_argument)]).
 :- set_prolog_flag(stack_limit, 64 000 000 000).
@@ -47,7 +48,7 @@ hopOK(N, TProp, Bandwidth, Alloc, PacketSize, BitRate, MinB, NewMinB) :-
 transmissionTime(PacketSize, Bandwidth, TTime) :- TTime is PacketSize/Bandwidth.
 
 delay(PathMinB, [(_,_)], Delay) :- Delay is PathMinB, !.
-delay(PathMinB, Path, Delay) :- PathMinB > 0, length(Path, L), Hops is L-1, Delay is PathMinB/Hops.
+delay(PathMinB, Path, Delay) :- PathMinB > 0, length(Path, Hops), Delay is PathMinB/Hops.
 delay(PathMinB, _, 0) :- PathMinB < 0.
 
 compatiblePaths([(FlowId, (P, MinB, D))|Fs], Paths, [(FlowId, (P, (MinB,MaxB), D))|NewFs]) :-
