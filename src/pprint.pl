@@ -15,8 +15,7 @@ extract_flowid(_, [], [], []).
 
 compute_overall_reliability([(_, (_, Reliability, _, _)) | Paths], OverallReliability) :-
     compute_overall_reliability(Paths, PartialReliability),
-    OverallReliability is PartialReliability * Reliability,
-    writeln(OverallReliability).
+    OverallReliability is PartialReliability * Reliability.
 compute_overall_reliability([], 1).
 
 % Pretty print the grouped data
