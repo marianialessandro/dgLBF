@@ -1,6 +1,7 @@
 :-['src/utils.pl', 'src/pprint.pl'].
 :- table transmissionTime/3.
-%:-['sim/data/flows/flows50.pl', 'sim/data/infrastructures/infr100.pl'].
+% :-['sim/data/flows/flows50.pl', 'sim/data/infrastructures/infr16.pl'].
+%:-['./src/sample-data.pl'].
 
 :- set_prolog_flag(answer_write_options,[max_depth(0), spacing(next_argument)]).
 :- set_prolog_flag(stack_limit, 64 000 000 000).
@@ -11,7 +12,7 @@ glbf :- glbf(Paths, _), prettyPrint(Paths).
 glbf(SPaths, Capacities) :-
     possiblePaths(PPaths, Capacities),
     validPaths(PPaths, Paths),
-    predsort(sortPaths, Paths, SPaths).
+    predsort(sortPaths, Paths, SPaths). % sort by FlowId, then by Reliability
     
 possiblePaths(Paths, Capacities) :-
     findall(FlowId, flow(FlowId, _, _), FlowIds),
@@ -24,9 +25,9 @@ validPaths(PPaths, Paths) :-
 possiblePaths(FlowIds, Alloc, Out) :- possiblePaths(FlowIds, [], Alloc, [], Out).
 possiblePaths([FlowId|FlowIds], Alloc, NewAlloc, OldOut, Out) :-
     flow(FlowId, S, D), reliabilityReqs(FlowId, _, Rep),
-    enoughCandidatePaths(S, D, Rep),
+    enoughCandidatePaths(S, D, Rep),!,
     paths(FlowId, Rep, Alloc, TmpAlloc, [], OldOut, FOut),
-    possiblePaths(FlowIds, TmpAlloc, NewAlloc, FOut, Out).    
+    possiblePaths(FlowIds, TmpAlloc, NewAlloc, FOut, Out).
 possiblePaths([], Alloc, Alloc, Out, Out).
 
 enoughCandidatePaths(S, D, Rep) :- findall(1, candidate(_, S, D, _), Cs), length(Cs, L), L >= Rep.
@@ -49,9 +50,15 @@ validCandidate(FId, (S,D), PId, CPath, PIds, Out) :-
     pathProtection(CPath, PIds), 
     noFateSharing(FId, CPath, Out).
 
+noFateSharing(_, _, _) :- \+ predicate_property(antiAffinity(_, _), defined), !.  
 noFateSharing(FId, CPath, Out) :-
     findall(AFP, (antiAffinity(FId, Fs), member(F, Fs), member((F,_,AFP,_,_), Out)), AFPs),
     noFateSharing(CPath, AFPs).
+
+noFateSharing(CPath, [AFPath|AFPs]) :- 
+    sharedFirstAndLast(CPath, AFPath, C, AF), intersection(C, AF, []), 
+    noFateSharing(CPath, AFPs).
+noFateSharing(_, []).
 
 pathProtection(SPD, PIds) :- intermediateNodes(SPD, P), noIntersections(P, PIds).
 
@@ -97,6 +104,3 @@ totQTime([_], _, _, _, _, _, 0).
 relevantFlow(CurrF, CurrP, N, Paths, PB) :-
     dif((F,P), (CurrF,CurrP)), member((F,P,Path),Paths), member(N, Path),
     dataReqs(F,PS,BR,_,_,_), PB is PS * BR.
-
-noFateSharing(CPath, [AFPath|AFPs]) :- intersection(CPath, AFPath, []), noFateSharing(CPath, AFPs).
-noFateSharing(_, []).

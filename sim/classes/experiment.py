@@ -1,11 +1,13 @@
-from collections import defaultdict
+import math
 import random
 import time
-from itertools import product
+from collections import defaultdict
+from itertools import combinations, product
 from os import makedirs
 from os.path import dirname, exists
 from typing import Any, List, Union
 
+import colorama as clr
 import config as c
 import networkx as nx
 import numpy as np
@@ -68,39 +70,37 @@ class Experiment:
         self.flows_file = c.FLOW_FILE_PATH.format(size=num_flows)
         self.flows: List[Flow] = []
         for i in range(num_flows):
-            start, end = np.random.choice(
-                self.infrastructure.nodes, size=2, replace=False
-            )
+            exists = False
+            while not exists:
+                start, end = np.random.choice(
+                    self.infrastructure.nodes, size=2, replace=False
+                )
+                exists = nx.has_path(self.infrastructure, start, end)
             self.flows.append(Flow(f"f{i}", start, end, random=True))
 
         self.flows.sort(
             key=lambda f: nx.shortest_path_length(self.infrastructure, f.start, f.end)
         )
 
-    def get_anti_affinity(self, flow_ids, flow_prob=c.ANTI_AFFINITY_PROB):
+    def get_anti_affinity(self, flow_ids):
 
-        random.shuffle(flow_ids)
+        # f2 = random.choice(flow_ids[1:])
+        # anti_affinity = {flow_ids[0]: [f2], f2: [flow_ids[0]]}
 
-        n_flows = len(flow_ids)
-        prob = 1 / (n_flows - 1)
+        N = len(flow_ids)
+        PAIRS = int(math.log2(N))
 
-        rnd_matrix = np.random.rand(n_flows, n_flows)
-        aa_matrix = (rnd_matrix < prob).astype(int)
+        all_pairs = list(combinations(flow_ids, 2))
 
-        np.fill_diagonal(aa_matrix, 0)
+        random.shuffle(all_pairs)
 
-        aa_matrix = np.maximum(aa_matrix, aa_matrix.T)
-        flow_mask = np.random.rand(n_flows) < flow_prob
+        selected_pairs = all_pairs[:PAIRS]
 
-        for i in range(n_flows):
-            if not flow_mask[i]:
-                aa_matrix[i, :] = 0
-                aa_matrix[:, i] = 0
+        anti_affinity = defaultdict(list)
 
-        anti_affinity = {
-            flow_ids[i]: [flow_ids[j] for j in range(n_flows) if aa_matrix[i, j] == 1]
-            for i in range(n_flows)
-        }
+        for f1, f2 in selected_pairs:
+            anti_affinity[f1].append(f2)
+            anti_affinity[f2].append(f1)
 
         return anti_affinity
 
@@ -122,7 +122,10 @@ class Experiment:
         paths = defaultdict(
             lambda: None,
             {
-                (f.start, f.end): self.infrastructure.simple_paths(f.start, f.end)
+                (f.start, f.end): self.infrastructure.simple_paths(
+                    f.start,
+                    f.end,  # disjoint=(f.replicas)
+                )
                 for f in self.flows
             },
         )
@@ -158,6 +161,7 @@ class Experiment:
         self.upload_flows()
 
     def save_result(self, res):
+        res["RepProb"] = c.REPLICAS_PROB
         res["Infr"] = self.infrastructure.name
         res["Flows"] = len(self.flows)
         res["Nodes"] = len(self.infrastructure.nodes)
@@ -174,6 +178,7 @@ class Experiment:
                 columns=[
                     "Timestamp",
                     "Infr",
+                    "RepProb",
                     "Flows",
                     "Nodes",
                     "Edges",
@@ -199,20 +204,27 @@ class Experiment:
         start_time = time.time()
         self.set_infrastructure(infr)
         self.set_flows(flows)
-        print(f"Setting time {time.time() - start_time} seconds")
+        print(
+            "\n" + clr.Fore.CYAN + f"Setting {round(time.time() - start_time, 4)}s",
+            end="\t",
+        )
         start_time = time.time()
         self.upload()
-        print(f"Uploading time {time.time() - start_time} seconds")
+        print(
+            clr.Fore.LIGHTCYAN_EX + f"Uploading {round(time.time() - start_time, 4)}s",
+            end="\n\n",
+        )
 
         with PrologMQI() as mqi:
             with mqi.create_thread() as prolog:
                 print(
                     c.EXP_MESSAGE.format(
                         iteration=iteration,
-                        num_flows=flows,
+                        flows=flows,
                         infr=self.infrastructure.name,
                         edges=len(self.infrastructure.edges),
                         nodes=len(self.infrastructure.nodes),
+                        seed=self.seed,
                     )
                 )
                 prolog.query("consult('{}')".format(c.SIM_FILE_PATH))
@@ -227,13 +239,18 @@ class Experiment:
                     if q:
                         res = self.parse_output(q[0])
                     else:
-                        print("\tNo results found.")
+                        print("\t" + clr.Fore.LIGHTRED_EX + "No results found.")
                 except PrologQueryTimeoutError:
-                    print("\tTimeout reached. Skipping this experiment.")
+                    print(
+                        "\t"
+                        + clr.Fore.YELLOW
+                        + "Timeout reached. Skipping this experiment."
+                    )
 
                 return res
 
     def run(self):
+        clr.init(autoreset=True)
         infrs = self.gmls + self.num_nodes
         for i, f in product(infrs, self.num_flows):
             iterations = 0

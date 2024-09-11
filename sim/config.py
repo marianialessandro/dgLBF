@@ -1,10 +1,29 @@
-import time
-from functools import wraps
 from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
 import pandas as pd
+
+# --- Infrastructure config ---
+
+NODE_LAT_MIN, NODE_LAT_MAX = 1, 5
+LINK_LAT_MIN, LINK_LAT_MAX = 1, 5
+LINK_BW_MIN, LINK_BW_MAX = 500, 1500
+LINK_REL_MIN, LINK_REL_MAX = 0.98, 0.999
+
+# --- Flow config ---
+
+PACKET_SIZE = 0.008
+BURST_SIZE_MIN, BURST_SIZE_MAX = 2, 4
+BIT_RATE_MIN, BIT_RATE_MAX = 2, 8
+LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 30, 60
+TOLERATION_THRESHOLD_MIN, TOLERATION_THRESHOLD_MAX = 10, 20
+RELIABILITY_MIN, RELIABILITY_MAX = 0.9, 0.95
+REPLICAS_PROB = 0.75
+
+# PACKET_SIZE_MIN, PACKET_SIZE_MAX, PACKET_SIZE_STEP = 0.001, 0.01, 0.001
+# PACKET_SIZE_RANGE = np.arange(PACKET_SIZE_MIN, PACKET_SIZE_MAX + PACKET_SIZE_STEP, PACKET_SIZE_STEP)
+### TEMPLATES ###
 
 # --- Directories & files ---
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -35,11 +54,14 @@ PLOT_PATH = join(PLOTS_DIR, PLOT_FILE)
 PLOT_DPI = 600
 
 # --- Experiment config ---
-TIMEOUT = 300  # seconds
+TIMEOUT = 240  # seconds
 GML_CHOICES = [f[:-4] for f in listdir(GML_DIR) if f.endswith(".gml")]
 EXP_TIMESTAMP_FORMAT = "%Y%m%d-%H%M%S"
 RES_TIMESTAMP_FORMAT = "%Y%m%d-%H%M"
-EXP_MESSAGE = "({iteration}) - Experiment with {num_flows} flows on {infr} ({edges} edges, {nodes} nodes)."
+EXP_MESSAGE = (
+    "Seed: {seed}\t Flows: {flows}\t Infr: {infr} (N: {nodes}, L: {edges}) \t "
+    + f"RepProb: {REPLICAS_PROB}"
+)
 COL_ORDER = [
     "Timestamp",
     "Infr",
@@ -59,28 +81,6 @@ FIG_OPTIONS = {
     "arrowstyle": "-|>",
     "arrowsize": 10,
 }
-
-# --- Infrastructure config ---
-
-NODE_LAT_MIN, NODE_LAT_MAX = 1, 5
-LINK_LAT_MIN, LINK_LAT_MAX = 1, 5
-LINK_BW_MIN, LINK_BW_MAX = 500, 1500
-LINK_REL_MIN, LINK_REL_MAX = 0.98, 0.999
-
-# --- Flow config ---
-
-PACKET_SIZE = 0.008
-BURST_SIZE_MIN, BURST_SIZE_MAX = 2, 4
-BIT_RATE_MIN, BIT_RATE_MAX = 2, 8
-LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 30, 60
-TOLERATION_THRESHOLD_MIN, TOLERATION_THRESHOLD_MAX = 10, 20
-RELIABILITY_MIN, RELIABILITY_MAX = 0.9, 0.95
-REPLICAS_MIN, REPLICAS_MAX = 1, 4
-ANTI_AFFINITY_PROB = 0.5
-
-# PACKET_SIZE_MIN, PACKET_SIZE_MAX, PACKET_SIZE_STEP = 0.001, 0.01, 0.001
-# PACKET_SIZE_RANGE = np.arange(PACKET_SIZE_MIN, PACKET_SIZE_MAX + PACKET_SIZE_STEP, PACKET_SIZE_STEP)
-### TEMPLATES ###
 
 # -- Prolog Templates ---
 MAIN_QUERY = "once(sim_glbf(Output, Allocation, Inferences, Time))."

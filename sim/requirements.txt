@@ -1,4 +1,5 @@
 click==8.1.7
+colorama==0.4.6
 contourpy==1.1.1
 cycler==0.12.1
 fonttools==4.43.1

@@ -10,7 +10,7 @@ from scipy.stats import zscore
 from matplotlib.font_manager import FontProperties
 
 FLOWS_UNIQUE = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
-FILES = list(iglob(join(c.RESULTS_DIR, "*.csv")))
+FILES = list(iglob(join(c.RESULTS_DIR, "**", "rep*/*.csv"), recursive=True))
 LEGEND_SIZE = 13
 X_TICKS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
 
@@ -106,6 +106,7 @@ def infr_flow_time(df: pd.DataFrame, suffix: str = ""):
         style=hue,
         markers=True,
         markersize=9,
+        errorbar=None,
         dashes=False,
     )
 
@@ -166,15 +167,69 @@ def flow_infr_time(df: pd.DataFrame, suffix: str = ""):
     save_plot(f"flow-infr-time-{suffix}")
 
 
+def nan_plot(df: pd.DataFrame):
+    # Count NA values in the Time column grouped by RepProb for Nodes and Flows
+    na_nodes = (
+        df.groupby(["RepProb", "Nodes"])["Time"]
+        .apply(lambda x: x.isna().sum())
+        .reset_index(name="Count")
+    )
+
+    na_flows = (
+        df.groupby(["RepProb", "Flows"])["Time"]
+        .apply(lambda x: x.isna().sum())
+        .reset_index(name="Count")
+    )
+
+    # Plot for Nodes
+
+    plt.figure(figsize=(10, 6))
+    sns.barplot(
+        x="RepProb",
+        y=na_nodes["Count"] * 100 / 660,
+        hue="Nodes",
+        data=na_nodes,
+        palette="colorblind",
+    )
+    # plt.title("NA Counts for Time by RepProb (Nodes)")
+    plt.xlabel("RepProb")
+    plt.ylabel(" % of NA values")
+
+    save_plot("nan-counts-nodes")
+
+    # Plot for Flows
+
+    plt.figure(figsize=(10, 6))
+    sns.barplot(
+        x="RepProb",
+        y=na_flows["Count"] * 100 / 420,
+        hue="Flows",
+        data=na_flows,
+        palette="colorblind",
+    )
+    # plt.title("NA % for Time by RepProb (Flows)")
+    plt.xlabel("RepProb")
+    plt.ylabel(" % of NA values")
+
+    save_plot("nan-counts-flows")
+
+
 def _set_legend(legend, size):
     for line in legend.get_texts():
         line.set_fontsize(size)
 
 
 if __name__ == "__main__":
-    # Load data
+
     df = pd.concat(map(pd.read_csv, FILES), ignore_index=True)
     # df = pd.read_csv(join(c.RESULTS_DIR, "results-281194.csv"))
+
+    # count the number of rows with Nan Time(s)
+    # nan = df["Time"].isna().groupby(df["RepProb"]).sum()
+    # Plot
+    sns.set_theme(style="darkgrid", palette="colorblind")
+
+    nan_plot(df)
 
     # Clean data
     df = clean_data(df)
@@ -183,14 +238,11 @@ if __name__ == "__main__":
     df_random = df[df["Infr"].str.contains(r"infr\d+")]
     df_topologies = df.drop(df_random.index)
 
-    # Plot
-    sns.set_theme(style="darkgrid", palette="colorblind")
-
     if not df.empty:
         # df["Time"] = df["Time"] * 1000  # convert to ms
         # flows_time(df_random, suffix="random")
         infr_flow_time(df_random, suffix="random")
         # flows_time(df_topologies, suffix="topologies")
-        infr_flow_time(df_topologies, suffix="topologies")
+        # infr_flow_time(df_topologies, suffix="topologies")
     else:
         print("No data to plot!")

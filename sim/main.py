@@ -37,7 +37,13 @@ from classes.experiment import Experiment
     help="Number of of trials to find a solution for each combination #flows / infrastructure.",
 )
 @click.option(
-    "--seed", "-s", type=int, default=None, help="Seed for the random number generator."
+    "--seed",
+    "-s",
+    type=int,
+    multiple=True,
+    default=None,
+    required=True,
+    help="Seed for the random number generator.",
 )
 @click.option(
     "--timeout", "-t", type=int, default=c.TIMEOUT, help="Timeout for the experiment."
@@ -45,19 +51,20 @@ from classes.experiment import Experiment
 def main(flows, nodes, gml, max_iterations, seed, timeout):
     """Start an experiment with an infrastructure of NODES nodes, and FLOWS flows."""
 
-    flows, nodes, gml = list(flows), list(nodes), list(gml)
+    flows, nodes, gml, seed = list(flows), list(nodes), list(gml), list(seed)
 
-    e = Experiment(
-        num_nodes=nodes,
-        num_flows=flows,
-        gmls=gml,
-        max_iterations=max_iterations,
-        seed=seed,
-        timeout=timeout,
-    )
+    for s in seed:
+        e = Experiment(
+            num_nodes=nodes,
+            num_flows=flows,
+            gmls=gml,
+            max_iterations=max_iterations,
+            seed=s,
+            timeout=timeout,
+        )
 
-    atexit.register(e.results_to_csv)
-    e.run()
+        atexit.register(e.results_to_csv)
+        e.run()
 
 
 if __name__ == "__main__":

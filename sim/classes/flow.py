@@ -51,7 +51,8 @@ class Flow:
         self.reliability = round(
             np.random.uniform(c.RELIABILITY_MIN, c.RELIABILITY_MAX), 4
         )
-        self.replicas = np.random.randint(c.REPLICAS_MIN, c.REPLICAS_MAX)
+        self.replicas = 2 if np.random.rand() < c.REPLICAS_PROB else 1
+        # np.random.randint(c.REPLICAS_MIN, c.REPLICAS_MAX)
 
     def __str__(self):
         return c.FLOW.format(**self.__dict__)

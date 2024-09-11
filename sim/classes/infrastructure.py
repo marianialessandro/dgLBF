@@ -20,7 +20,8 @@ class Infrastructure(nx.DiGraph):
         if gml:
             g = nx.read_gml(c.GML_FILE_PATH.format(name=gml))
         else:
-            g = nx.barabasi_albert_graph(n, m, seed=seed)
+            # g = nx.barabasi_albert_graph(n, m, seed=seed)
+            g = nx.gnp_random_graph(n, 0.3, seed=seed, directed=True)
 
         self.init_nodes(g.nodes)
         self.init_links(g.edges)
@@ -76,7 +77,6 @@ class Infrastructure(nx.DiGraph):
             paths = list(
                 nx.node_disjoint_paths(self, source, target, cutoff=self.diameter)
             )
-            paths = [list(nx.utils.pairwise(p)) for p in paths]
         else:
             paths = list(
                 nx.all_simple_paths(self, source, target, cutoff=self.diameter)
