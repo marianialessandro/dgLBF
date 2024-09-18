@@ -1,4 +1,5 @@
 import math
+from pathlib import Path
 import random
 from collections import defaultdict
 from itertools import combinations
@@ -24,6 +25,7 @@ class Experiment:
         replica_probability: float = 0.0,
         seed: Any = None,
         timeout: int = c.TIMEOUT,
+        experiment_dir: Path = c.DATA_DIR,
     ):
         np.random.seed(seed)
         random.seed(seed)
@@ -36,21 +38,33 @@ class Experiment:
         self.replica_probability = replica_probability
         self.seed = seed
         self.timeout = timeout
+        self.experiment_dir = experiment_dir
 
         self.result = {}
 
     @dispatch(str)
     def set_infrastructure(self, gml):
-        self.infrastructure = Infrastructure(gml=gml)
+        self.infrastructure = Infrastructure(
+            gml=gml,
+            infra_path=(self.experiment_dir / "infrastructures"),
+        )
 
     @dispatch(int)
     def set_infrastructure(self, num_nodes):
         self.infrastructure = Infrastructure(
-            n=num_nodes, m=int(np.log2(num_nodes)), seed=self.seed
+            n=num_nodes,
+            m=int(np.log2(num_nodes)),
+            seed=self.seed,
+            infra_path=self.experiment_dir / "infrastructures",
         )
 
     def set_flows(self):
-        self.flows_file = c.FLOW_FILE_PATH.format(size=self.n_flows)
+        filename = c.FLOWS_FILE.format(
+            size=self.n_flows,
+            seed=self.seed,
+            rp=self.replica_probability,
+        )
+        self.flows_file = self.experiment_dir / "flows" / filename
         self.flows: List[Flow] = []
         for i in range(self.n_flows):
             exists = False

@@ -35,8 +35,8 @@ GML_DIR = DATA_DIR / "gml"
 
 RESULTS_FILE = "dglbf-seed={Seed},flows={flows},nodes={nodes},prob={prob}.csv"
 GML_FILE = "{name}.gml"
-FLOWS_FILE = "flows{size}.pl"
-INFRA_FILE = "infr{name}.pl"
+FLOWS_FILE = "flows{size}-{seed}-{rp}.pl"
+INFRA_FILE = "infr{name}-{seed}.pl"
 
 RESULTS_FILE_PATH = join(RESULTS_DIR, RESULTS_FILE)
 GML_FILE_PATH = join(GML_DIR, GML_FILE)

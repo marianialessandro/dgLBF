@@ -1,11 +1,13 @@
 from pathlib import Path
+import time
 from typing import Any, Dict
+import tempfile as tf
 
+import pandas as pd
 import ray
-from config import GML_CHOICES, RESULTS_DIR, TIMEOUT
-from ray import train, tune
-
 from classes.experiment import Experiment
+from config import RESULTS_DIR, TIMEOUT
+from ray import train, tune
 
 # Define the search space
 param_space = {
@@ -38,16 +40,18 @@ param_space = {
 
 # Define tunable
 def dglbf(config: Dict[str, Any]):
-    e = Experiment(
-        n_flows=config["n_flows"],
-        infr=config["infr"],
-        replica_probability=config["replica_probability"],
-        seed=config["seed"],
-        timeout=config["timeout"],
-    )
 
-    e.run()
-    return e.stringify()
+    with tf.TemporaryDirectory() as tmpdir:
+        e = Experiment(
+            n_flows=config["n_flows"],
+            infr=config["infr"],
+            replica_probability=config["replica_probability"],
+            seed=config["seed"],
+            timeout=config["timeout"],
+            experiment_dir=Path(tmpdir),
+        )
+        e.run()
+        return e.stringify()
 
 
 if __name__ == "__main__":
@@ -65,5 +69,5 @@ if __name__ == "__main__":
     tuner = tune.Tuner(dglbf, param_space=param_space, run_config=run_config)
     results = tuner.fit()
     df = results.get_dataframe()
-    df.set_index("timestamp", inplace=True)
+    df.set_index("trial_id", inplace=True)
     df.to_csv(Path(results.experiment_path) / "results.csv")

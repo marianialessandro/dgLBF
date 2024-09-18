@@ -1,4 +1,5 @@
 from os import makedirs
+import os
 from os.path import basename, dirname, exists, join
 from typing import Any
 
@@ -12,7 +13,14 @@ import time
 
 # nx graph obtained as a barabasi albert graph
 class Infrastructure(nx.DiGraph):
-    def __init__(self, n: int = 2, m: int = 3, seed: Any = None, gml: str = None):
+    def __init__(
+        self,
+        n: int = 2,
+        m: int = 3,
+        seed: Any = None,
+        gml: str = None,
+        infra_path: str = c.INFRA_DIR,
+    ):
         super().__init__(directed=True)
         self.n = n
         self.m = m
@@ -29,7 +37,10 @@ class Infrastructure(nx.DiGraph):
         self.diameter = nx.diameter(self)
 
         self._size = len(self.nodes)
-        self.file = c.INFRA_FILE_PATH.format(name=(gml.title() if gml else self._size))
+        filename = c.INFRA_FILE.format(
+            name=(gml.title() if gml else self._size), seed=seed
+        )
+        self.file = os.path.join(infra_path, filename)
         self.name = basename(self.file).split(".")[0]
 
     def init_nodes(self, nodes):
