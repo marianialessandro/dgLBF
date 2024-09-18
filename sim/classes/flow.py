@@ -19,6 +19,7 @@ class Flow:
         toleration_threshold: float = 0.0,
         reliability: float = 0.0,
         replicas: int = 0,
+        rep_prob: float = 0.0,
         random: bool = False,
     ):
 
@@ -26,7 +27,7 @@ class Flow:
         self.start = start
         self.end = end
         if random:
-            self.random_setup()
+            self.random_setup(rep_prob)
         else:
             self.packet_size = packet_size
             self.burst_size = burst_size
@@ -38,7 +39,7 @@ class Flow:
 
         self.path: List[int] = []
 
-    def random_setup(self):
+    def random_setup(self, rep_prob: float):
         self.packet_size = c.PACKET_SIZE
         self.bit_rate = np.random.randint(c.BIT_RATE_MIN, c.BIT_RATE_MAX)
         self.burst_size = np.random.randint(c.BURST_SIZE_MIN, c.BURST_SIZE_MAX)
@@ -51,7 +52,7 @@ class Flow:
         self.reliability = round(
             np.random.uniform(c.RELIABILITY_MIN, c.RELIABILITY_MAX), 4
         )
-        self.replicas = 2 if np.random.rand() < c.REPLICAS_PROB else 1
+        self.replicas = 2 if np.random.rand() < rep_prob else 1
         # np.random.randint(c.REPLICAS_MIN, c.REPLICAS_MAX)
 
     def __str__(self):

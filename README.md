@@ -28,28 +28,9 @@ Download or clone this repo. Make sure you have the following prerequisites:
     python3 main.py [OPTIONS]
     ```
 
-    The script has the following options:
+    The script runs a grid search on the parameters of the experiment, generating a random infrastructure and a random set of flows. The results are saved in a CSV file in the `results/<experiment>` directory.
 
+    Grid parameters can be changed directly in the `main.py`, by modifying the `param_space` dictionary.
     ```
-    Usage: main.py [OPTIONS]
-
-    Start an experiment with an infrastructure of NODES nodes, and FLOWS flows.
-
-    Options:
-    -f, --flows INTEGER             Number of flows in the experiment.
-                                    [required]
-    -n, --nodes INTEGER             Number of nodes in the infrastructure.
-    -g, --gml [janos-us-ca|giul39|germany50|ta2|norway|cost266|atlanta|di-yuan|pdh|india35|sun|geant|dfn-bwin|france|polska|dfn-gwin|nobel-eu|abilene|newyork|janos-us|nobel-germany|pioro40|zib54|nobel-us]
-                                    Name of a GML file (in data/gml) to use as
-                                    infrastructure.
-    -i, --max_iterations INTEGER    Number of of trials to find a solution for
-                                    each combination #flows / infrastructure.
-    -s, --seed INTEGER              Seed for the random number generator.
-    -t, --timeout INTEGER           Timeout for the experiment.
-    --help                          Show this message and exit.
-    ```
-
-    *N.B.*, using the `--gml` option will override the `--nodes` option. Instead, by using the `--nodes` option, the script will generate a random infrastructure with the specified number of nodes.
-    Flows are generated randomly, with a random source and destination node, and a random latency requirement.
 
     Change the ranges of random values for both infrastructures and flows in the [`config.py`](https://github.com/di-unipi-socc/dgLBF/blob/main/sim/config.py) script.

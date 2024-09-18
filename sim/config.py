@@ -19,10 +19,7 @@ BIT_RATE_MIN, BIT_RATE_MAX = 2, 8
 LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 30, 60
 TOLERATION_THRESHOLD_MIN, TOLERATION_THRESHOLD_MAX = 10, 20
 RELIABILITY_MIN, RELIABILITY_MAX = 0.9, 0.95
-REPLICAS_PROB = 0.75
 
-# PACKET_SIZE_MIN, PACKET_SIZE_MAX, PACKET_SIZE_STEP = 0.001, 0.01, 0.001
-# PACKET_SIZE_RANGE = np.arange(PACKET_SIZE_MIN, PACKET_SIZE_MAX + PACKET_SIZE_STEP, PACKET_SIZE_STEP)
 ### TEMPLATES ###
 
 # --- Directories & files ---
@@ -36,7 +33,7 @@ FLOW_DIR = DATA_DIR / "flows"
 INFRA_DIR = DATA_DIR / "infrastructures"
 GML_DIR = DATA_DIR / "gml"
 
-RESULTS_FILE = "results-{name}.csv"
+RESULTS_FILE = "dglbf-seed={Seed},flows={flows},nodes={nodes},prob={prob}.csv"
 GML_FILE = "{name}.gml"
 FLOWS_FILE = "flows{size}.pl"
 INFRA_FILE = "infr{name}.pl"
@@ -58,10 +55,6 @@ TIMEOUT = 240  # seconds
 GML_CHOICES = [f[:-4] for f in listdir(GML_DIR) if f.endswith(".gml")]
 EXP_TIMESTAMP_FORMAT = "%Y%m%d-%H%M%S"
 RES_TIMESTAMP_FORMAT = "%Y%m%d-%H%M"
-EXP_MESSAGE = (
-    "Seed: {seed}\t Flows: {flows}\t Infr: {infr} (N: {nodes}, L: {edges}) \t "
-    + f"RepProb: {REPLICAS_PROB}"
-)
 COL_ORDER = [
     "Timestamp",
     "Infr",

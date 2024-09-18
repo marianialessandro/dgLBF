@@ -1,7 +1,8 @@
 :-['src/utils.pl', 'src/pprint.pl'].
 :- table transmissionTime/3.
+
 % :-['sim/data/flows/flows50.pl', 'sim/data/infrastructures/infr16.pl'].
-%:-['./src/sample-data.pl'].
+% :-['./src/sample-data.pl'].
 
 :- set_prolog_flag(answer_write_options,[max_depth(0), spacing(next_argument)]).
 :- set_prolog_flag(stack_limit, 64 000 000 000).

@@ -1,71 +1,69 @@
-import atexit
+from pathlib import Path
+from typing import Any, Dict
 
-import click
-import config as c
+import ray
+from config import GML_CHOICES, RESULTS_DIR, TIMEOUT
+from ray import train, tune
+
 from classes.experiment import Experiment
 
+# Define the search space
+param_space = {
+    "timeout": TIMEOUT,
+    "n_flows": tune.grid_search(list(range(100, 5001, 100))),
+    "infr": tune.grid_search([2**i for i in range(4, 11)]),
+    "replica_probability": tune.grid_search(
+        [
+            0.25,
+            0.5,
+            0.75,
+        ]
+    ),
+    "seed": tune.grid_search(
+        [
+            110396,
+            151195,
+            281194,
+            300997,
+            10664,
+            21297,
+            30997,
+            51162,
+            70799,
+            90597,
+        ]
+    ),
+}
 
-@click.command()
-@click.option(
-    "--flows",
-    "-f",
-    type=int,
-    multiple=True,
-    required=True,
-    help="Number of flows in the experiment.",
-)
-@click.option(
-    "--nodes",
-    "-n",
-    multiple=True,
-    type=int,
-    help="Number of nodes in the infrastructure.",
-)
-@click.option(
-    "--gml",
-    "-g",
-    multiple=True,
-    type=click.Choice(c.GML_CHOICES),
-    default=None,
-    help="Name of a GML file (in data/gml) to use as infrastructure.",
-)
-@click.option(
-    "--max_iterations",
-    "-i",
-    type=int,
-    default=1,
-    help="Number of of trials to find a solution for each combination #flows / infrastructure.",
-)
-@click.option(
-    "--seed",
-    "-s",
-    type=int,
-    multiple=True,
-    default=None,
-    required=True,
-    help="Seed for the random number generator.",
-)
-@click.option(
-    "--timeout", "-t", type=int, default=c.TIMEOUT, help="Timeout for the experiment."
-)
-def main(flows, nodes, gml, max_iterations, seed, timeout):
-    """Start an experiment with an infrastructure of NODES nodes, and FLOWS flows."""
 
-    flows, nodes, gml, seed = list(flows), list(nodes), list(gml), list(seed)
+# Define tunable
+def dglbf(config: Dict[str, Any]):
+    e = Experiment(
+        n_flows=config["n_flows"],
+        infr=config["infr"],
+        replica_probability=config["replica_probability"],
+        seed=config["seed"],
+        timeout=config["timeout"],
+    )
 
-    for s in seed:
-        e = Experiment(
-            num_nodes=nodes,
-            num_flows=flows,
-            gmls=gml,
-            max_iterations=max_iterations,
-            seed=s,
-            timeout=timeout,
-        )
-
-        atexit.register(e.results_to_csv)
-        e.run()
+    e.run()
+    return e.stringify()
 
 
 if __name__ == "__main__":
-    main()
+    # config_example = {
+    #     "timeout": 60,
+    #     "n_flows": tune.grid_search([1, 2, 3]),
+    #     "infr": 32,
+    #     "replica_probability": 0.25,
+    #     "seed": 110396,
+    # }
+
+    ray.init(address="auto")
+
+    run_config = train.RunConfig(storage_path=RESULTS_DIR)
+    tuner = tune.Tuner(dglbf, param_space=param_space, run_config=run_config)
+    results = tuner.fit()
+    df = results.get_dataframe()
+    df.set_index("timestamp", inplace=True)
+    df.to_csv(Path(results.experiment_path) / "results.csv")

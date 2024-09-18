@@ -163,3 +163,4 @@ cython_debug/
 sim/data/flows/*
 sim/data/infrastructures/*
 sim/plots/*
+sim/results/*
