@@ -55,13 +55,13 @@ def dglbf(config: Dict[str, Any]):
 
 
 if __name__ == "__main__":
-    # config_example = {
-    #     "timeout": 60,
-    #     "n_flows": tune.grid_search([1, 2, 3]),
-    #     "infr": 32,
-    #     "replica_probability": 0.25,
-    #     "seed": 110396,
-    # }
+    config_example = {
+        "timeout": 60,
+        "n_flows": tune.grid_search([1000, 2, 3]),
+        "infr": tune.grid_search([2, 16, 32]),
+        "replica_probability": 0.25,
+        "seed": 110396,
+    }
 
     ray.init(address="auto")
 
@@ -70,4 +70,4 @@ if __name__ == "__main__":
     results = tuner.fit()
     df = results.get_dataframe()
     df.set_index("trial_id", inplace=True)
-    df.to_csv(Path(results.experiment_path) / "results.csv")
+    df.to_parquet(Path(results.experiment_path) / "results.parquet")

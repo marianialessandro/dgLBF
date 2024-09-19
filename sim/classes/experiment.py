@@ -190,19 +190,22 @@ class Experiment:
                         self.result.update(parse_output(q[0]))
                     else:
                         print("No results found.")
+                        self.empty_update("no_result")
                 except PrologQueryTimeoutError:
                     print("Timeout reached. Skipping this experiment.")
-
-                    self.result.update(
-                        {
-                            "Output": "timeout",
-                            "Allocation": None,
-                            "Inferences": None,
-                            "Time": self.timeout,
-                        }
-                    )
+                    self.empty_update("timeout")
 
         self.save_result()
+
+    def empty_update(self, reason: str):
+        self.result.update(
+            {
+                "Output": reason,
+                "Allocation": None,
+                "Inferences": None,
+                "Time": self.timeout,
+            }
+        )
 
 
 def get_anti_affinity(flow_ids):

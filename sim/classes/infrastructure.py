@@ -28,8 +28,8 @@ class Infrastructure(nx.DiGraph):
         if gml:
             g = nx.read_gml(c.GML_FILE_PATH.format(name=gml))
         else:
-            g = nx.barabasi_albert_graph(n, m, seed=seed)
-            # g = nx.gnp_random_graph(n, 0.3, seed=seed, directed=True)
+            # g = nx.barabasi_albert_graph(n, m, seed=seed)
+            g = nx.gnp_random_graph(n, 0.7, seed=seed, directed=True)
 
         self.init_nodes(g.nodes)
         self.init_links(g.edges)
