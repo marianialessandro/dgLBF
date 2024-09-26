@@ -1,8 +1,10 @@
+ipykernel
 matplotlib
 multipledispatch
 networkx
 numpy===1.24.4
 pandas
 ray[train]
+scipy
 seaborn
 swiplserver
