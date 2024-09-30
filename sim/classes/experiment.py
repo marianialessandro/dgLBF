@@ -1,10 +1,10 @@
 import math
-from pathlib import Path
 import random
 from collections import defaultdict
 from itertools import combinations
 from os import makedirs
 from os.path import dirname, exists
+from pathlib import Path
 from typing import Any, List, Union
 
 import config as c
@@ -176,6 +176,7 @@ class Experiment:
         self.set_flows()
         self.upload()
 
+        # with PrologMQI(launch_mqi=False, port=4242, password="debugnow") as mqi:
         with PrologMQI() as mqi:
             with mqi.create_thread() as prolog:
                 prolog.query("consult('{}')".format(c.SIM_FILE_PATH))
@@ -203,7 +204,9 @@ class Experiment:
                 "Output": reason,
                 "Allocation": None,
                 "Inferences": None,
-                "Time": self.timeout,
+                "Time": (
+                    self.timeout if "Time" not in self.result else self.result["Time"]
+                ),
             }
         )
 
@@ -254,6 +257,17 @@ def parse_paths(paths):
             "delay": delay,
         }
         for (flow, (pid, (path, (reliability, (budgets, delay))))) in paths
+    }
+
+
+def parse_paths_no_reliability(paths):
+    return {
+        (flow, pid): {
+            "path": path,
+            "budgets": budgets,
+            "delay": delay,
+        }
+        for (flow, (pid, (path, (budgets, delay)))) in paths
     }
 
 
