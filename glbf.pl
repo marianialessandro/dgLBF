@@ -1,8 +1,8 @@
 :-['src/utils.pl', 'src/pprint.pl'].
 :- table transmissionTime/3.
 
-% :-['sim/data/flows/flows50.pl', 'sim/data/infrastructures/infr16.pl'].
-% :-['./src/sample-data.pl'].
+%:-['sim/data/flows500-110396-0.25.pl', 'sim/data/infr16-110396.pl'].
+:-['./src/sample-data.pl'].
 
 :- set_prolog_flag(answer_write_options,[max_depth(0), spacing(next_argument)]).
 :- set_prolog_flag(stack_limit, 64 000 000 000).
@@ -17,7 +17,12 @@ glbf(SPaths, Capacities) :-
     
 possiblePaths(Paths, Capacities) :-
     findall(FlowId, flow(FlowId, _, _), FlowIds),
-    possiblePaths(FlowIds, Capacities, Paths).
+    possiblePaths(FlowIds, Capacities, []),!,fail.
+
+possiblePaths([P|Aths], Capacities) :-
+    findall(FlowId, flow(FlowId, _, _), FlowIds),
+    possiblePaths(FlowIds, Capacities, [P|Aths]).
+
     
 validPaths(PPaths, Paths) :-
     findall((F,P,Path), member((F,P,(Path,_,_,_)),PPaths), Paths2),
@@ -26,12 +31,18 @@ validPaths(PPaths, Paths) :-
 possiblePaths(FlowIds, Alloc, Out) :- possiblePaths(FlowIds, [], Alloc, [], Out).
 possiblePaths([FlowId|FlowIds], Alloc, NewAlloc, OldOut, Out) :-
     flow(FlowId, S, D), reliabilityReqs(FlowId, _, Rep),
-    enoughCandidatePaths(S, D, Rep),!,
+    enoughCandidatePaths(S, D, Rep),
     paths(FlowId, Rep, Alloc, TmpAlloc, [], OldOut, FOut),
     possiblePaths(FlowIds, TmpAlloc, NewAlloc, FOut, Out).
+possiblePaths([FlowId|_], _, [], _, []) :-
+    flow(FlowId, S, D), reliabilityReqs(FlowId, _, Rep),
+    \+ enoughCandidatePaths(S, D, Rep).
 possiblePaths([], Alloc, Alloc, Out, Out).
 
-enoughCandidatePaths(S, D, Rep) :- findall(1, candidate(_, S, D, _), Cs), length(Cs, L), L >= Rep.
+enoughCandidatePaths(S, D, 1):- candidate(_, S, D, _), !.
+enoughCandidatePaths(S, D, 2) :-
+    candidate(PId1, S, D, P1), candidate(PId2, S, D, P2), dif(PId1, PId2),
+    intermediateNodes(P1, N1), intermediateNodes(P2, N2), intersection(N1, N2, []), !.
 
 paths(FlowId, N, Alloc, NewAlloc, PIds, OldOut, Out) :-
     N > 0, path(FlowId, Alloc, TmpAlloc, PId, PIds, OldOut, FOut),
