@@ -1,7 +1,6 @@
 :-['src/utils.pl', 'src/pprint.pl'].
 :- table transmissionTime/3.
 
-%:-['sim/data/flows500-110396-0.25.pl', 'sim/data/infr16-110396.pl'].
 % :-['./src/sample-data.pl'].
 
 :- set_prolog_flag(answer_write_options,[max_depth(0), spacing(next_argument)]).
@@ -14,15 +13,13 @@ glbf(SPaths, Capacities) :-
     possiblePaths(PPaths, Capacities),
     validPaths(PPaths, Paths),
     predsort(sortPaths, Paths, SPaths). % sort by FlowId, then by Reliability
-    
-possiblePaths(Paths, Capacities) :-
-    findall(FlowId, flow(FlowId, _, _), FlowIds),
-    possiblePaths(FlowIds, Capacities, []),!,fail.
 
 possiblePaths([P|Aths], Capacities) :-
     findall(FlowId, flow(FlowId, _, _), FlowIds),
     possiblePaths(FlowIds, Capacities, [P|Aths]).
-
+possiblePaths(_, Capacities) :-
+    findall(FlowId, flow(FlowId, _, _), FlowIds),
+    possiblePaths(FlowIds, Capacities, []),!,fail.
     
 validPaths(PPaths, Paths) :-
     findall((F,P,Path), member((F,P,(Path,_,_,_)),PPaths), Paths2),

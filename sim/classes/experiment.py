@@ -5,7 +5,7 @@ from itertools import combinations
 from os import makedirs
 from os.path import dirname, exists
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any, Dict, List, Literal, Optional
 
 import config as c
 import networkx as nx
@@ -21,16 +21,24 @@ class Experiment:
     def __init__(
         self,
         n_flows: int,
-        infr: Union[str, int] = 1,
+        builder: Literal["barabasi_albert", "erdos_renyi", "gml"] = "gml",
+        n: Optional[int] = None,
+        m: Optional[int] = None,
+        p: Optional[float] = None,
+        gml: Optional[str] = None,
         replica_probability: float = 0.0,
         seed: Any = None,
-        timeout: int = c.TIMEOUT,
+        timeout: int = 1800,
         experiment_dir: Path = c.DATA_DIR,
     ):
         np.random.seed(seed)
         random.seed(seed)
 
-        self.infr = infr
+        self.builder = builder
+        self.n = n
+        self.m = m
+        self.p = p
+        self.gml = gml
 
         self.flows = []
         self.n_flows = n_flows
@@ -40,23 +48,8 @@ class Experiment:
         self.timeout = timeout
         self.experiment_dir = experiment_dir
 
-        self.result = {}
-
-    @dispatch(str)
-    def set_infrastructure(self, gml):
-        self.infrastructure = Infrastructure(
-            gml=gml,
-            infra_path=(self.experiment_dir / "infrastructures"),
-        )
-
-    @dispatch(int)
-    def set_infrastructure(self, num_nodes):
-        self.infrastructure = Infrastructure(
-            n=num_nodes,
-            m=int(np.log2(num_nodes)),
-            seed=self.seed,
-            infra_path=self.experiment_dir / "infrastructures",
-        )
+        self.result: Dict[str, Any] = {}
+        self.infrastructure: Optional[Infrastructure] = None
 
     def set_flows(self):
         filename = c.FLOWS_FILE.format(
@@ -172,7 +165,16 @@ class Experiment:
             return res
 
     def run(self):
-        self.set_infrastructure(self.infr)
+        self.infrastructure = Infrastructure(
+            builder=self.builder,
+            n=self.n,
+            m=self.m,
+            p=self.p,
+            seed=self.seed,
+            gml=self.gml,
+            infra_path=self.experiment_dir / "infrastructures",
+        )
+
         self.set_flows()
         self.upload()
 
@@ -278,7 +280,7 @@ def parse_allocation(allocation):
 def parse_output(out):
     o = parse_prolog(out)
     return {
-        "Output": parse_paths(o["Output"]),
+        "Output": parse_paths_no_reliability(o["Output"]),
         "Allocation": parse_allocation(o["Allocation"]),
         "Inferences": o["Inferences"],
         "Time": o["Time"],

@@ -1,35 +1,45 @@
+# import os
 from os import makedirs
-import os
 from os.path import basename, dirname, exists, join
-from typing import Any
+from typing import Any, Literal, Optional
 
 import click
 import config as c
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import time
 
 
 # nx graph obtained as a barabasi albert graph
 class Infrastructure(nx.DiGraph):
     def __init__(
         self,
-        n: int = 2,
-        m: int = 3,
+        builder: Literal["barabasi_albert", "erdos_renyi", "gml"] = "gml",
+        n: Optional[int] = None,
+        m: Optional[int] = None,
+        p: Optional[float] = None,
         seed: Any = None,
-        gml: str = None,
+        gml: Optional[str] = None,
         infra_path: str = c.INFRA_DIR,
     ):
         super().__init__(directed=True)
         self.n = n
         self.m = m
 
-        if gml:
+        if builder == "barabasi_albert":
+            if n is None or m is None:
+                raise ValueError("n and m must be provided for Barabasi-Albert.")
+            g = nx.barabasi_albert_graph(n, m, seed=seed)
+        elif builder == "erdos_renyi":
+            if n is None or p is None:
+                raise ValueError("n and p must be provided for Erdos-Renyi.")
+            g = nx.gnp_random_graph(n, p, seed=seed, directed=True)
+        elif builder == "gml":
+            if not gml:
+                raise ValueError("GML filename must be provided.")
             g = nx.read_gml(c.GML_FILE_PATH.format(name=gml))
         else:
-            g = nx.barabasi_albert_graph(n, m, seed=seed)
-            # g = nx.gnp_random_graph(n, 0.7, seed=seed, directed=True)
+            raise ValueError(f"Invalid builder {builder}.")
 
         self.init_nodes(g.nodes)
         self.init_links(g.edges)
@@ -40,7 +50,7 @@ class Infrastructure(nx.DiGraph):
         filename = c.INFRA_FILE.format(
             name=(gml.title() if gml else self._size), seed=seed
         )
-        self.file = os.path.join(infra_path, filename)
+        self.file = join(infra_path, filename)
         self.name = basename(self.file).split(".")[0]
 
     def init_nodes(self, nodes):
