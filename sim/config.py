@@ -8,8 +8,8 @@ import pandas as pd
 
 NODE_LAT_MIN, NODE_LAT_MAX = 1, 5
 LINK_LAT_MIN, LINK_LAT_MAX = 1, 5
-LINK_BW_MIN, LINK_BW_MAX = 500, 1500
-LINK_REL_MIN, LINK_REL_MAX = 0.98, 0.999
+LINK_BW_MIN, LINK_BW_MAX = 100, 101
+LINK_REL_MIN, LINK_REL_MAX = 0.99, 0.999
 
 # --- Flow config ---
 
@@ -18,12 +18,13 @@ BURST_SIZE_MIN, BURST_SIZE_MAX = 2, 4
 BIT_RATE_MIN, BIT_RATE_MAX = 2, 8
 LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 30, 60
 TOLERATION_THRESHOLD_MIN, TOLERATION_THRESHOLD_MAX = 10, 20
-RELIABILITY_MIN, RELIABILITY_MAX = 0.9, 0.95
+RELIABILITY_MIN, RELIABILITY_MAX = 0.8, 0.9
 
 ### TEMPLATES ###
 
 # --- Directories & files ---
 ROOT_DIR = Path(__file__).resolve().parent.parent
+VERSIONS_DIR = ROOT_DIR / "versions"
 SIM_DIR = ROOT_DIR / "sim"
 PLOTS_DIR = SIM_DIR / "plots"
 RESULTS_DIR = SIM_DIR / "results"
@@ -37,12 +38,14 @@ RESULTS_FILE = "dglbf-seed={Seed},flows={flows},nodes={nodes},prob={prob}.csv"
 GML_FILE = "{name}.gml"
 FLOWS_FILE = "flows{size}-{seed}-{rp}.pl"
 INFRA_FILE = "infr{name}-{seed}.pl"
+VERSION_FILE = "glbf-{version}.pl"
 
 RESULTS_FILE_PATH = join(RESULTS_DIR, RESULTS_FILE)
 GML_FILE_PATH = join(GML_DIR, GML_FILE)
 FLOW_FILE_PATH = join(FLOW_DIR, FLOWS_FILE)
 INFRA_FILE_PATH = join(INFRA_DIR, INFRA_FILE)
 SIM_FILE_PATH = join(SIM_DIR, "sim.pl")
+VERSION_FILE_PATH = join(VERSIONS_DIR, VERSION_FILE)
 
 # --- Plots config ---
 PLOT_FORMAT = "pdf"

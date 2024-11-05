@@ -1,4 +1,4 @@
-:-['../glbf.pl'].
+% :-['../glbf.pl'].
 
 
 :- set_prolog_flag(stack_limit, 128 000 000 000).

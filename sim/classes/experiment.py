@@ -27,6 +27,7 @@ class Experiment:
         p: Optional[float] = None,
         gml: Optional[str] = None,
         replica_probability: float = 0.0,
+        version: Literal["plain", "rel", "pp", "aa", "all"] = "plain",
         seed: Any = None,
         timeout: int = 1800,
         experiment_dir: Path = c.DATA_DIR,
@@ -43,7 +44,10 @@ class Experiment:
         self.flows = []
         self.n_flows = n_flows
 
-        self.replica_probability = replica_probability
+        self.replica_probability = (
+            replica_probability if version in ["pp", "all"] else 0.0
+        )
+        self.version = version
         self.seed = seed
         self.timeout = timeout
         self.experiment_dir = experiment_dir
@@ -134,6 +138,7 @@ class Experiment:
         self.upload_flows()
 
     def save_result(self):
+        self.result["Version"] = self.version
         self.result["Seed"] = self.seed
         self.result["RepProb"] = self.replica_probability
         self.result["Infr"] = self.infrastructure.name
@@ -181,6 +186,11 @@ class Experiment:
         # with PrologMQI(launch_mqi=False, port=4242, password="debugnow") as mqi:
         with PrologMQI() as mqi:
             with mqi.create_thread() as prolog:
+                prolog.query(
+                    "consult('{}')".format(
+                        c.VERSION_FILE_PATH.format(version=self.version)
+                    )
+                )
                 prolog.query("consult('{}')".format(c.SIM_FILE_PATH))
                 prolog.query(c.LOAD_INFR_QUERY.format(path=self.infrastructure.file))
                 prolog.query(c.LOAD_FLOWS_QUERY.format(path=self.flows_file))
@@ -277,10 +287,14 @@ def parse_allocation(allocation):
     return {(s, d): bw for (s, (d, bw)) in allocation}
 
 
-def parse_output(out):
+def parse_output(out, plain=True):
     o = parse_prolog(out)
     return {
-        "Output": parse_paths_no_reliability(o["Output"]),
+        "Output": (
+            parse_paths_no_reliability(o["Output"])
+            if plain
+            else parse_paths(o["Output"])
+        ),
         "Allocation": parse_allocation(o["Allocation"]),
         "Inferences": o["Inferences"],
         "Time": o["Time"],
