@@ -162,5 +162,4 @@ cython_debug/
 .vscode/
 sim/data/flows/*
 sim/data/infrastructures/*
-sim/plots/*
 sim/results/*
