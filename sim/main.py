@@ -1,64 +1,85 @@
-import atexit
+import tempfile as tf
+from pathlib import Path
+from typing import Any, Dict
 
-import click
-import config as c
+import numpy as np
+import pandas as pd
+import ray
 from classes.experiment import Experiment
+from config import GML_CHOICES, RESULTS_DIR
+from ray import train, tune
 
 
-@click.command()
-@click.option(
-    "--flows",
-    "-f",
-    type=int,
-    multiple=True,
-    required=True,
-    help="Number of flows in the experiment.",
-)
-@click.option(
-    "--nodes",
-    "-n",
-    multiple=True,
-    type=int,
-    help="Number of nodes in the infrastructure.",
-)
-@click.option(
-    "--gml",
-    "-g",
-    multiple=True,
-    type=click.Choice(c.GML_CHOICES),
-    default=None,
-    help="Name of a GML file (in data/gml) to use as infrastructure.",
-)
-@click.option(
-    "--max_iterations",
-    "-i",
-    type=int,
-    default=1,
-    help="Number of of trials to find a solution for each combination #flows / infrastructure.",
-)
-@click.option(
-    "--seed", "-s", type=int, default=None, help="Seed for the random number generator."
-)
-@click.option(
-    "--timeout", "-t", type=int, default=c.TIMEOUT, help="Timeout for the experiment."
-)
-def main(flows, nodes, gml, max_iterations, seed, timeout):
-    """Start an experiment with an infrastructure of NODES nodes, and FLOWS flows."""
+# Define the search space
+def get_param_space():
+    # n_flows = [150, 225, 300, 375, 400]
+    return {
+        "timeout": 1800,
+        "version": tune.grid_search(["plain", "pp", "aa", "rel", "all"]),
+        "builder": tune.grid_search(["barabasi_albert", "erdos_renyi"]),  # "gml",
+        "n_flows": tune.grid_search(list(range(500, 10001, 500))),
+        "replica_probability": tune.grid_search([0.25, 0.5, 0.75]),
+        "p": 0.7,
+        "n": tune.grid_search([2**i for i in range(4, 11)]),
+        "seed": tune.grid_search(
+            [110296, 151195, 300997, 10664, 21297, 30997, 70799, 90597, 42, 80824]
+        ),
+        # "n_flows": tune.grid_search(n_flows),
+        # "replica_probability": 1,
+        # "n": tune.sample_from(lambda spec: n_flows.index(spec.config.n_flows) + 1),
+        # "gml": # tune.grid_search(GML_CHOICES)
+    }
 
-    flows, nodes, gml = list(flows), list(nodes), list(gml)
 
-    e = Experiment(
-        num_nodes=nodes,
-        num_flows=flows,
-        gmls=gml,
-        max_iterations=max_iterations,
-        seed=seed,
-        timeout=timeout,
-    )
+# Define tunable
+def dglbf(config: Dict[str, Any]):
 
-    atexit.register(e.results_to_csv)
-    e.run()
+    with tf.TemporaryDirectory() as tmpdir:
+        e = Experiment(
+            n_flows=config["n_flows"],
+            builder=config["builder"],
+            n=config["n"],
+            m=int(np.log2(config["n"])),
+            p=config["p"],
+            replica_probability=config["replica_probability"],
+            version=config["version"],
+            seed=config["seed"],
+            timeout=config["timeout"],
+            experiment_dir=Path(tmpdir),
+            # gml=config["gml"],
+        )
+        e.run()
+        return e.stringify()
 
 
 if __name__ == "__main__":
-    main()
+    config_example = {
+        "builder": "gml",
+        "version": "aa",
+        "timeout": 2,
+        "n_flows": 225,
+        "replica_probability": 1,
+        "gml": "cev",
+        "seed": 110296,
+    }
+
+    ray.init(address="auto")
+
+    name = input("Experiment name: ")
+
+    # run_config = train.RunConfig(name=name, storage_path=RESULTS_DIR)
+    # tuner = tune.Tuner(dglbf, param_space=get_param_space(), run_config=run_config)
+
+    tuner = tune.Tuner.restore(
+        f"/home/massa/dgLBF/sim/results/{name}",
+        trainable=dglbf,
+        param_space=get_param_space(),
+        restart_errored=True,
+    )
+
+    results = tuner.fit()
+    df = results.get_dataframe()
+    df.set_index("trial_id", inplace=True)
+    df.to_parquet(Path(results.experiment_path) / "results.parquet")
+
+    # print(dglbf(config_example))
