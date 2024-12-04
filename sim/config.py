@@ -8,7 +8,7 @@ import pandas as pd
 
 NODE_LAT_MIN, NODE_LAT_MAX = 1, 5
 LINK_LAT_MIN, LINK_LAT_MAX = 1, 5
-LINK_BW_MIN, LINK_BW_MAX = 100, 101
+LINK_BW_MIN, LINK_BW_MAX = 200, 500
 LINK_REL_MIN, LINK_REL_MAX = 0.99, 0.999
 
 # --- Flow config ---

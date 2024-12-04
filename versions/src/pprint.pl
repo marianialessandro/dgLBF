@@ -31,7 +31,7 @@ print_paths([(PathId, (Path, Reliability, (MinBudget, MaxBudget), Delay)) | Rest
     ansi_format([fg(magenta)], '    Path: ~w~n', [Path]),
     ansi_format([fg(blue)], '    Reliability: ',[]), format('~4f~n', [Reliability]),
     ansi_format([fg(blue)], '    MinB, MaxB: ',[]), format('(~2f, ~2f)~n', [MinBudget, MaxBudget]),
-    ansi_format([fg(blue)], '    Delay: ',[]), format('~2f~n', [Delay]),
+    ansi_format([fg(blue)], '    Per-hop Delay: ',[]), format('~2f~n', [Delay]),
     print_paths(Rest).
 print_paths([]).
 

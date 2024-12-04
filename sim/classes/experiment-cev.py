@@ -44,9 +44,7 @@ class Experiment:
         self.flows = []
         self.n_flows = n_flows
 
-        self.replica_probability = (
-            replica_probability if version in ["pp", "all"] else 0.0
-        )
+        self.rep_prob = replica_probability
         self.version = version
         self.seed = seed
         self.timeout = timeout
@@ -59,37 +57,48 @@ class Experiment:
         filename = c.FLOWS_FILE.format(
             size=self.n_flows,
             seed=self.seed,
-            rp=self.replica_probability,
+            rp=self.rep_prob,
         )
         self.flows_file = self.experiment_dir / "flows" / filename
-        self.flows: List[Flow] = []
-        for i in range(self.n_flows):
-            exists = False
-            while not exists:
-                start, end = np.random.choice(
-                    self.infrastructure.nodes, size=2, replace=False
+        if self.flows == []:
+            self.flows: List[Flow] = []
+            valid_nodes = [n for n in self.infrastructure.nodes if n.startswith("ns")]
+            for i in range(self.n_flows):
+                exists = False
+                while not exists:
+                    start, end = np.random.choice(valid_nodes, size=2, replace=False)
+                    exists = (
+                        len(
+                            self.infrastructure.simple_paths(
+                                start,
+                                end,
+                                disjoint=True,
+                            )
+                        )
+                        >= 2
+                    )
+                self.flows.append(
+                    Flow(
+                        f"f{i}",
+                        start,
+                        end,
+                        random=True,
+                        rep_prob=1 if i <= self.rep_prob else 0,
+                    )
                 )
-                exists = nx.has_path(self.infrastructure, start, end)
-            self.flows.append(
-                Flow(
-                    f"f{i}",
-                    start,
-                    end,
-                    random=True,
-                    rep_prob=self.replica_probability,
+
+            self.flows.sort(
+                key=lambda f: nx.shortest_path_length(
+                    self.infrastructure, f.start, f.end
                 )
             )
-
-        self.flows.sort(
-            key=lambda f: nx.shortest_path_length(self.infrastructure, f.start, f.end)
-        )
 
     def upload_flows(self):
 
         flows = [str(f) for f in self.flows]
         data_reqs = [f.data_reqs() for f in self.flows]
         p_protection = [f.path_protection() for f in self.flows]
-        aa_reqs = get_anti_affinity([f.fid for f in self.flows])
+        # aa_reqs = get_anti_affinity([f.fid for f in self.flows], n=self.rep_prob)
 
         if not exists(dirname(self.flows_file)):
             makedirs(dirname(self.flows_file))
@@ -107,16 +116,16 @@ class Experiment:
             },
         )
 
-        if aa_reqs and any(aa_reqs.values()):
-            for f, anti_aff in aa_reqs.items():
-                if anti_aff:
-                    result += (
-                        c.ANTI_AFFINITY.format(
-                            fid=f, anti_affinity=str(anti_aff).replace("'", "")
-                        )
-                        + "\n"
-                    )
-            result += "\n"
+        # if aa_reqs and any(aa_reqs.values()):
+        #     for f, anti_aff in aa_reqs.items():
+        #         if anti_aff:
+        #             result += (
+        #                 c.ANTI_AFFINITY.format(
+        #                     fid=f, anti_affinity=str(anti_aff).replace("'", "")
+        #                 )
+        #                 + "\n"
+        #             )
+        #     result += "\n"
 
         for (source, target), ps in paths.items():
             for idx, path in enumerate(ps):
@@ -140,12 +149,11 @@ class Experiment:
     def save_result(self):
         self.result["Version"] = self.version
         self.result["Seed"] = self.seed
-        self.result["RepProb"] = self.replica_probability
+        self.result["RepProb"] = self.rep_prob
         self.result["Infr"] = self.infrastructure.name
         self.result["Flows"] = self.n_flows
         self.result["Nodes"] = len(self.infrastructure.nodes)
         self.result["Edges"] = len(self.infrastructure.edges)
-        self.result["Builder"] = self.builder
 
     def stringify(self):
         return {k: str(v) for k, v in self.result.items()}
@@ -200,7 +208,7 @@ class Experiment:
                 )
                 try:
                     q = prolog.query_async_result()
-                    if q:
+                    if q and q[0] and q[0]["Output"] != []:
                         self.result.update(
                             parse_output(
                                 q[0],
@@ -229,16 +237,13 @@ class Experiment:
         )
 
 
-def get_anti_affinity(flow_ids):
-
-    N = len(flow_ids)
-    PAIRS = int(math.log2(N))
+def get_anti_affinity(flow_ids, n=1):
 
     all_pairs = list(combinations(flow_ids, 2))
 
     random.shuffle(all_pairs)
 
-    selected_pairs = all_pairs[:PAIRS]
+    selected_pairs = all_pairs[:n]
 
     anti_affinity = defaultdict(list)
 

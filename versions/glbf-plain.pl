@@ -2,6 +2,7 @@
 :- table transmissionTime/3.
 
 % :-['./src/sample-data.pl'].
+% :-['../sim/data/flows/flows300-110296-1.pl', '../sim/data/infrastructures/infrCev-110296.pl'].
 
 :- set_prolog_flag(answer_write_options,[max_depth(0), spacing(next_argument)]).
 :- set_prolog_flag(stack_limit, 64 000 000 000).

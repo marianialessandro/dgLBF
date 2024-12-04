@@ -14,9 +14,9 @@ glbf(SPaths, Capacities) :-
     validPaths(PPaths, Paths),
     predsort(sortPaths, Paths, SPaths). % sort by FlowId, then by Reliability
 
-possiblePaths([P|Aths], Capacities) :-
+possiblePaths(Paths, Capacities) :-
     findall(FlowId, flow(FlowId, _, _), FlowIds),
-    possiblePaths(FlowIds, Capacities, [P|Aths]).
+    possiblePaths(FlowIds, Capacities, Paths), dif(Paths, []).
 possiblePaths(_, Capacities) :-
     findall(FlowId, flow(FlowId, _, _), FlowIds),
     possiblePaths(FlowIds, Capacities, []),!,fail.
