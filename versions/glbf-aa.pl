@@ -1,8 +1,9 @@
 :-['src/utils.pl', 'src/pprint.pl'].
 :- table transmissionTime/3.
+:- dynamic antiAffinity/2.
 
 % :-['./src/sample-data.pl'].
-% :-['../sim/data/flows/flows225-110296-1.pl', '../sim/data/infrastructures/infrCev-110296.pl'].
+:-['../sim/data/flows/flows-cev.pl', '../sim/data/infrastructures/infr-cev.pl'].
 
 :- set_prolog_flag(answer_write_options,[max_depth(0), spacing(next_argument)]).
 :- set_prolog_flag(stack_limit, 64 000 000 000).
@@ -49,7 +50,6 @@ validCandidate(FId, (S,D), PId, CPath, Out) :-
     candidate(PId, S, D, CPath),
     noFateSharing(FId, CPath, Out).
 
-noFateSharing(_, _, _) :- \+ predicate_property(antiAffinity(_, _), defined), !.  
 noFateSharing(FId, CPath, Out) :-
     findall(AFP, (antiAffinity(FId, Fs), member(F, Fs), member((F,_,AFP,_,_), Out)), AFPs),
     noFateSharing(CPath, AFPs).

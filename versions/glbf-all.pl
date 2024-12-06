@@ -1,5 +1,6 @@
 :-['src/utils.pl', 'src/pprint.pl'].
 :- table transmissionTime/3.
+:- dynamic antiAffinity/2.
 
 % :-['../sim/data/infrastructures/infr-cev.pl', '../sim/data/flows/flows-cev.pl'].
 %:-['src/sample-data.pl'].
@@ -60,7 +61,6 @@ validCandidate(FId, (S,D), PId, CPath, PIds, Out) :-
     pathProtection(CPath, PIds), 
     noFateSharing(FId, CPath, Out).
 
-noFateSharing(_, _, _) :- \+ predicate_property(antiAffinity(_, _), defined), !.  
 noFateSharing(FId, CPath, Out) :-
     findall(AFP, (antiAffinity(FId, Fs), member(F, Fs), member((F,_,AFP,_,_), Out)), AFPs),
     noFateSharing(CPath, AFPs).
