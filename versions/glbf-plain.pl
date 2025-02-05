@@ -42,8 +42,8 @@ pathOk([S,N|Rest], OldMinB, Alloc, PacketSize, BitRate, NewMinB) :-
     pathOk([N|Rest], TmpMinB, Alloc, PacketSize, BitRate, NewMinB).
 pathOk([_], MinB, _, _, _, MinB).
 
-hopOk(N, TProp, Bandwidth, Alloc, PacketSize, BitRate, MinB, NewMinB) :- 
-    node(N, MinNodeBudget), usedBandwidth(N, _, Alloc, UsedBW), Bandwidth > UsedBW + BitRate,
+hopOk(S, N, TProp, Bandwidth, Alloc, PacketSize, BitRate, MinB, NewMinB) :- 
+    node(N, MinNodeBudget), usedBandwidth(S, N, Alloc, UsedBW), Bandwidth > UsedBW + BitRate,
     transmissionTime(PacketSize, Bandwidth, TTime),
     NewMinB is MinB - MinNodeBudget - TProp - TTime.
 

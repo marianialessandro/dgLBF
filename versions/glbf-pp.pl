@@ -67,14 +67,14 @@ noIntersections(P, PIds) :-
 pathOk([S,N|Rest], OldMinB, ReqRel, Alloc, PacketSize, BitRate, OldRel, NewRel, NewMinB) :-
     link(S, N, TProp, Bandwidth, FeatRel),
     reliabilityOk(OldRel, FeatRel, ReqRel, TmpRel),
-    hopOk(N, TProp, Bandwidth, Alloc, PacketSize, BitRate, OldMinB, TmpMinB),
+    hopOk(S, N, TProp, Bandwidth, Alloc, PacketSize, BitRate, OldMinB, TmpMinB),
     pathOk([N|Rest], TmpMinB, ReqRel, Alloc, PacketSize, BitRate, TmpRel, NewRel, NewMinB).
 pathOk([_], MinB, _, _, _, _, Rel, Rel, MinB).
 
 reliabilityOk(_, _, _, 1).
 
-hopOk(N, TProp, Bandwidth, Alloc, PacketSize, BitRate, MinB, NewMinB) :- 
-    node(N, MinNodeBudget), usedBandwidth(N, _, Alloc, UsedBW), Bandwidth > UsedBW + BitRate,
+hopOk(S, N, TProp, Bandwidth, Alloc, PacketSize, BitRate, MinB, NewMinB) :- 
+    node(N, MinNodeBudget), usedBandwidth(S, N, Alloc, UsedBW), Bandwidth > UsedBW + BitRate,
     transmissionTime(PacketSize, Bandwidth, TTime),
     NewMinB is MinB - MinNodeBudget - TProp - TTime.
 
