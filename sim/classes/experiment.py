@@ -1,4 +1,5 @@
 import math
+import os
 import random
 from collections import defaultdict
 from itertools import combinations
@@ -6,6 +7,8 @@ from os import makedirs
 from os.path import dirname, exists
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
+
+import psutil
 
 import config as c
 import networkx as nx
@@ -54,6 +57,11 @@ class Experiment:
 
         self.result: Dict[str, Any] = {}
         self.infrastructure: Optional[Infrastructure] = None
+
+        self.process = psutil.Process(os.getpid())
+        self.cpu = 0
+        self.mem_start = 0
+        self.mem_end = 0
 
     def set_flows(self):
         filename = c.FLOWS_FILE.format(
@@ -147,6 +155,10 @@ class Experiment:
         self.result["Edges"] = len(self.infrastructure.edges)
         self.result["Builder"] = self.builder
 
+        self.result["cpu"] = self.cpu
+        self.result["mem_start"] = self.mem_start
+        self.result["mem_end"] = self.mem_end
+
     def stringify(self):
         return {k: str(v) for k, v in self.result.items()}
 
@@ -184,6 +196,9 @@ class Experiment:
         self.set_flows()
         self.upload()
 
+        cpu_start = self.process.cpu_percent(interval=None)
+        self.mem_start = self.process.memory_info().rss / (1024 * 1024)
+
         # with PrologMQI(launch_mqi=False, port=4242, password="debugnow") as mqi:
         with PrologMQI() as mqi:
             with mqi.create_thread() as prolog:
@@ -200,6 +215,8 @@ class Experiment:
                 )
                 try:
                     q = prolog.query_async_result()
+                    self.cpu = self.process.cpu_percent(interval=None) - cpu_start
+                    self.mem_end = self.process.memory_info().rss / (1024 * 1024)
                     if q:
                         self.result.update(
                             parse_output(

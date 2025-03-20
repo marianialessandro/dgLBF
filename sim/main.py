@@ -10,9 +10,24 @@ from config import GML_CHOICES, RESULTS_DIR
 from ray import train, tune
 
 
+def get_cev_param_space():
+    return {
+        "n_flows": tune.grid_search([150, 225, 300, 375, 400]),
+        "builder": "gml",
+        "gml": "cev",
+        "version": "all",
+        "timeout": 1800,
+        "replica_probability": 1,
+        "seed": tune.grid_search(
+            [110296, 151195, 300997, 10664, 21297, 30997, 70799, 90597, 42, 80824]
+        ),
+        "n": None,
+        "p": None,
+    }
+
+
 # Define the search space
 def get_param_space():
-    # n_flows = [150, 225, 300, 375, 400]
     return {
         "timeout": 1800,
         "version": tune.grid_search(["plain", "pp", "aa", "rel", "all"]),
@@ -24,10 +39,23 @@ def get_param_space():
         "seed": tune.grid_search(
             [110296, 151195, 300997, 10664, 21297, 30997, 70799, 90597, 42, 80824]
         ),
-        # "n_flows": tune.grid_search(n_flows),
-        # "replica_probability": 1,
-        # "n": tune.sample_from(lambda spec: n_flows.index(spec.config.n_flows) + 1),
-        # "gml": # tune.grid_search(GML_CHOICES)
+        "gml": None,
+    }
+
+
+def get_monitor_space():
+    return {
+        "timeout": 1100,
+        "n_flows": 8000,
+        "version": "all",
+        "replica_probability": 0.75,
+        "builder": "erdos_renyi",
+        "p": 0.7,
+        "n": 1024,
+        "seed": tune.grid_search(
+            [110296, 151195, 300997, 10664, 21297, 30997, 70799, 90597, 42, 80824]
+        ),
+        "gml": None,
     }
 
 
@@ -39,14 +67,14 @@ def dglbf(config: Dict[str, Any]):
             n_flows=config["n_flows"],
             builder=config["builder"],
             n=config["n"],
-            m=int(np.log2(config["n"])),
+            m=int(np.log2(config["n"])) if config["n"] else None,
             p=config["p"],
             replica_probability=config["replica_probability"],
             version=config["version"],
             seed=config["seed"],
             timeout=config["timeout"],
             experiment_dir=Path(tmpdir),
-            # gml=config["gml"],
+            gml=config["gml"],
         )
         e.run()
         return e.stringify()
@@ -55,7 +83,7 @@ def dglbf(config: Dict[str, Any]):
 if __name__ == "__main__":
     config_example = {
         "builder": "gml",
-        "version": "aa",
+        "version": "all",
         "timeout": 2,
         "n_flows": 225,
         "replica_probability": 1,
@@ -64,22 +92,28 @@ if __name__ == "__main__":
     }
 
     ray.init(address="auto")
-
+    resources = ray.available_resources()
+    cpus = int(resources.get("CPU", 1))
+    print(f"CPUs: {cpus}")
     name = input("Experiment name: ")
 
-    # run_config = train.RunConfig(name=name, storage_path=RESULTS_DIR)
-    # tuner = tune.Tuner(dglbf, param_space=get_param_space(), run_config=run_config)
-
-    tuner = tune.Tuner.restore(
-        f"/home/massa/dgLBF/sim/results/{name}",
-        trainable=dglbf,
-        param_space=get_param_space(),
-        restart_errored=True,
+    run_config = train.RunConfig(name=name, storage_path=RESULTS_DIR)
+    tuner = tune.Tuner(
+        tune.with_resources(dglbf, {"cpu": cpus}),
+        param_space=get_cev_param_space(),
+        run_config=run_config,
     )
+
+    # tuner = tune.Tuner.restore(
+    #     f"/home/massa/dgLBF/sim/results/{name}",
+    #     trainable=dglbf,
+    #     param_space=get_param_space(),
+    #     restart_errored=True,
+    # )
 
     results = tuner.fit()
     df = results.get_dataframe()
     df.set_index("trial_id", inplace=True)
-    df.to_parquet(Path(results.experiment_path) / "results.parquet")
+    df.to_parquet(Path(results.experiment_path) / f"{name}.parquet")
 
     # print(dglbf(config_example))
