@@ -18,7 +18,10 @@ from swiplserver import *
 
 from .flow import Flow
 from .infrastructure import Infrastructure
+from .metrics import NodeMetrics
 
+from .utils.affinity_utils import get_anti_affinity
+from .utils.prolog_parse import parse_output
 
 class Experiment:
     def __init__(
@@ -30,10 +33,11 @@ class Experiment:
         p: Optional[float] = None,
         gml: Optional[str] = None,
         replica_probability: float = 0.0,
-        version: Literal["plain", "rel", "pp", "aa", "all"] = "plain",
+        version: Literal["plain", "rel", "pp", "aa", "all", "cc"] = "plain",
         seed: Any = None,
         timeout: int = 1800,
         experiment_dir: Path = c.DATA_DIR,
+        prebuilt_flows_file: Optional[Path] = None,
     ):
         np.random.seed(seed)
         random.seed(seed)
@@ -60,8 +64,15 @@ class Experiment:
         self.cpu = 0
         self.mem_start = 0
         self.mem_end = 0
+        
+        self.prebuilt_flows_file = prebuilt_flows_file
 
     def set_flows(self):
+        if self.prebuilt_flows_file is not None:
+            # mi limito a puntare al file esistente
+            self.flows_file = self.prebuilt_flows_file
+            return
+        
         filename = c.FLOWS_FILE.format(
             size=self.n_flows,
             seed=self.seed,
@@ -102,7 +113,11 @@ class Experiment:
             )
 
     def upload_flows(self):
-
+        
+        if self.prebuilt_flows_file is not None:
+            # non ho bisogno di scrivere il file, lo leggo direttamente
+            return
+        
         flows = [str(f) for f in self.flows]
         data_reqs = [f.data_reqs() for f in self.flows]
         p_protection = [f.path_protection() for f in self.flows]
@@ -169,28 +184,68 @@ class Experiment:
 
     def stringify(self):
         return {k: str(v) for k, v in self.result.items()}
-
+        
     def __str__(self):
         if not self.result:
             return "\nNo results yet.\n"
+
+        # Header comune
+        out = [
+            f"Version:      {self.version}",
+            f"Flows:        {self.result.get('Flows',     '–')}",
+            f"Nodes:        {self.result.get('Nodes',     '–')}",
+            f"Edges:        {self.result.get('Edges',     '–')}",
+            f"Inferences:   {self.result.get('Inferences','–')}",
+            f"Time:         {round(self.result.get('Time',0),4)} s",
+            ""
+        ]
+
+        if self.version != "cc":
+            # branch non-cc (plain/rel/…)
+            out.append("Paths and Delays:")
+            for (flow, pid), attr in self.result["Output"].items():
+                out.append(f"  Flow {flow}/{pid}:")
+                out.append(f"    Path:      {attr['path']}")
+                b0,b1 = attr['budgets']
+                out.append(f"    Budgets:   min={round(b0,4)} Mbps, max={round(b1,4)} Mbps")
+                out.append(f"    Delay:     {round(attr['delay'],4)} ms")
+            out.append("")
+            out.append("Allocation (link → bandwidth):")
+            for (s,d), bw in self.result["Allocation"].items():
+                out.append(f"  {s} → {d}: {bw} Mbps")
+
         else:
-            res = f"Flows: {self.result['Flows']}" + "\n"
-            res += f"Nodes: {self.result['Nodes']}" + "\n"
-            res += f"Edges: {self.result['Edges']}" + "\n\n"
-            res += "Paths: \n"
-            for flow, attr in self.result["Output"].items():
-                res += f"Flow {flow}: \n"
-                res += f"\tPath: {attr['path']}\n"
-                res += f"\tBudgets: {round(attr['budgets'][0], 4), round(attr['budgets'][1], 4)}\n"
-                res += f"\tDelay: {round(attr['delay'],4)}\n"
-            res += "Allocation: \n"
-            for (s, d), bw in self.result["Allocation"].items():
-                res += f"\tLink {s} -> {d}: {bw} Mbps\n"
-            res += f"Inferences: {self.result['Inferences']}\n"
-            res += f"Time: {round(self.result['Time'], 4)} (s)\n"
-            return res
+            # modalità “cc”: destrutturiamo le tuple raw
+            out.append("CC Output:")
+            for entry in self.result.get("Output", []):
+                # entry = (flow_id, (path_id, (nodes, ((minb, maxb), delay))))
+                fid, (pid, (nodes, (budgets, delay))) = entry
+                minb, maxb = budgets
+                out.append(f"  Flow ID:           {fid}")
+                out.append(f"    Path ID:         {pid}")
+                out.append(f"    Nodes:           {nodes}")
+                out.append(f"    Bandwidth Range: {round(minb,4)}–{round(maxb,4)} Mbps")
+                out.append(f"    Delay:           {round(delay,4)} ms")
+                out.append("")
+
+            out.append("CC Allocation:")
+            for src, (dst, used_bw) in self.result.get("Allocation", []):
+                out.append(f"  Link: {src} → {dst}")
+                out.append(f"    Used Bandwidth: {used_bw} Mbps")
+            out.append("")
+
+            out.append("Node Carbon Costs:")
+            for node, (load, (carbon_em, energy_cost)) in self.result.get("NodeCarbonCost", []):
+                out.append(f"  Node: {node}")
+                out.append(f"    Load:             {load} Mbps")
+                out.append(f"    CO₂ Emissions:    {carbon_em:.2e} kgCO₂")
+                out.append(f"    Energy Cost:      {energy_cost:.2e} €")
+                out.append("")
+
+        return "\n".join(out)
 
     def run(self):
+        # Initialize infrastructure object
         self.infrastructure = Infrastructure(
             builder=self.builder,
             n=self.n,
@@ -200,10 +255,16 @@ class Experiment:
             gml=self.gml,
             infra_path=self.experiment_dir / "infrastructures",
         )
-
+        
+        # Prepare flows and upload facts
         self.set_flows()
+        
+        """ for f in self.flows:
+            print(f) """
+        
         self.upload()
 
+        # Start resource usage tracking
         cpu_start = self.process.cpu_percent(interval=None)
         self.mem_start = self.process.memory_info().rss / (1024 * 1024)
 
@@ -218,19 +279,31 @@ class Experiment:
                 prolog.query("consult('{}')".format(c.SIM_FILE_PATH))
                 prolog.query(c.LOAD_INFR_QUERY.format(path=self.infrastructure.file))
                 prolog.query(c.LOAD_FLOWS_QUERY.format(path=self.flows_file))
-                prolog.query_async(
-                    c.MAIN_QUERY, find_all=False, query_timeout_seconds=self.timeout
-                )
+                
+                if self.version == "cc":
+                    filename = c.ENERGY_PROFILE_FILE.format(name=self.gml)
+                    file_path = os.path.join(c.ENERGY_PROFILES_DIR, filename)
+
+                    prolog.query(
+                        c.LOAD_ENERGY_PROFILES_QUERY.format(path=file_path)
+                    )
+                    
+                    prolog.query_async(
+                        c.MAIN_CC_QUERY, find_all=False, query_timeout_seconds=self.timeout
+                    )
+                else:
+                    prolog.query_async(
+                        c.MAIN_QUERY, find_all=False, query_timeout_seconds=self.timeout
+                    )
+
+                    
                 self.cpu = self.process.cpu_percent(interval=None) - cpu_start
                 self.mem_end = self.process.memory_info().rss / (1024 * 1024)
                 try:
                     q = prolog.query_async_result()
-                    if q and q[0] and q[0]["Output"] != []:
+                    if q and q[0] and q[0]["Output"] != []:        
                         self.result.update(
-                            parse_output(
-                                q[0],
-                                plain=self.version == "plain",
-                            )
+                            parse_output(q[0], version=self.version)
                         )
                     else:
                         print("No results found.")
@@ -253,77 +326,15 @@ class Experiment:
             }
         )
 
-
-def get_anti_affinity(flow_ids, n=1):
-
-    all_pairs = list(combinations(flow_ids, 2))
-
-    random.shuffle(all_pairs)
-
-    selected_pairs = all_pairs[:n]
-
-    anti_affinity = defaultdict(list)
-
-    for f1, f2 in selected_pairs:
-        anti_affinity[f1].append(f2)
-        anti_affinity[f2].append(f1)
-
-    return anti_affinity
-
-
-def parse_prolog(query):
-    if is_prolog_functor(query):
-        if prolog_name(query) != ",":
-            ans = (prolog_name(query), parse_prolog(prolog_args(query)))
-        else:
-            ans = tuple(parse_prolog(prolog_args(query)))
-    elif is_prolog_list(query):
-        ans = [parse_prolog(v) for v in query]
-    elif is_prolog_atom(query):
-        ans = query
-    elif isinstance(query, dict):
-        ans = {k: parse_prolog(v) for k, v in query.items()}
-    else:
-        ans = query
-    return ans
-
-
-def parse_paths(paths):
-    return {
-        (flow, pid): {
-            "path": path,
-            "reliability": reliability,
-            "budgets": budgets,
-            "delay": delay,
-        }
-        for (flow, (pid, (path, (reliability, (budgets, delay))))) in paths
-    }
-
-
-def parse_paths_no_reliability(paths):
-    return {
-        (flow, pid): {
-            "path": path,
-            "budgets": budgets,
-            "delay": delay,
-        }
-        for (flow, (pid, (path, (budgets, delay)))) in paths
-    }
-
-
-def parse_allocation(allocation):
-    return {(s, d): bw for (s, (d, bw)) in allocation}
-
-
-def parse_output(out, plain=True):
-    o = parse_prolog(out)
-    return {
-        "Output": (
-            parse_paths_no_reliability(o["Output"])
-            if plain
-            else parse_paths(o["Output"])
-        ),
-        "Allocation": parse_allocation(o["Allocation"]),
-        "Inferences": o["Inferences"],
-        "Time": o["Time"],
-    }
+    def get_node_metrics(self) -> List[NodeMetrics]:
+        raw = self.result.get("NodeCarbonCost", [])
+        metrics = []
+        for entry in raw:
+            node_id, (load, (carbon_em, energy_cost)) = entry
+            metrics.append(NodeMetrics(
+                id=node_id,
+                load=load,
+                emission=carbon_em,
+                energy_cost=energy_cost
+            ))
+        return metrics

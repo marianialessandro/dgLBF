@@ -36,6 +36,7 @@ GML_DIR = DATA_DIR / "gml"
 
 RESULTS_FILE = "dglbf-seed={Seed},flows={flows},nodes={nodes},prob={prob}.csv"
 GML_FILE = "{name}.gml"
+ENERGY_PROFILE_FILE = "energyProfile-{name}.pl"
 FLOWS_FILE = "flows{size}-{seed}-{rp}.pl"
 INFRA_FILE = "infr{name}-{seed}.pl"
 VERSION_FILE = "glbf-{version}.pl"
@@ -46,6 +47,8 @@ FLOW_FILE_PATH = join(FLOW_DIR, FLOWS_FILE)
 INFRA_FILE_PATH = join(INFRA_DIR, INFRA_FILE)
 SIM_FILE_PATH = join(SIM_DIR, "sim.pl")
 VERSION_FILE_PATH = join(VERSIONS_DIR, VERSION_FILE)
+
+CEV_STANDARD_FLOWS_FILE = join(FLOW_DIR, "flows-cev.pl")
 
 # --- Plots config ---
 PLOT_FORMAT = "pdf"
@@ -99,3 +102,19 @@ def df_to_file(df: pd.DataFrame, file_path: Path):
     # create the directory if it doesn't exist
     file_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(file_path, mode="a", header=(not isfile(file_path)))
+
+
+# —– Energy‐aware (cc) config —–
+ENERGY_PROFILES_DIR = DATA_DIR / "energyProfiles"
+ENERGY_PROFILE_FILE = "energyProfile-{name}.pl"
+ENERGY_PROFILE_FILE_PATH = join(ENERGY_PROFILES_DIR, ENERGY_PROFILE_FILE)
+
+# query per caricare gli energy profiles
+LOAD_ENERGY_PROFILES_QUERY = "once(loadEnergyProfiles('{path}'))."
+# query principale per la versione cc (carbon‐aware gLBF)
+MAIN_CC_QUERY = "once(sim_greenglbf(Output, Allocation, NodeCarbonCost, Inferences, Time))."
+
+
+ENERGY_PROFILES_DIR = DATA_DIR / "energyProfiles"
+ENERGY_PROFILE_FILE_PATH = join(ENERGY_PROFILES_DIR, ENERGY_PROFILE_FILE)
+LOAD_ENERGY_PROFILES_QUERY = "once(loadEnergyProfiles('{path}'))."
