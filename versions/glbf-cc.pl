@@ -55,7 +55,7 @@ alloc_node_loads(Alloc, NodeLoads) :-
     sort(NsDup, Nodes),
     % 2) per ciascun nodo somma i BW di tutti i suoi link
     findall((Node,Load),
-            ( member(Node, Nodes),add router energy consumption model with per-node power usage, CO₂ emissions & electricity cost calculations, predicates to load node energy facts, and a Python wrapper
+            ( member(Node, Nodes),
               findall(BW,
                       ( member((Node,_,BW), Alloc)  % archi in uscita da node
                       ; member((_,Node,BW), Alloc)  % archi in entrata da node

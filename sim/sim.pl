@@ -17,7 +17,6 @@ sim_glbf(Out, Alloc, Infs, Time) :-
 wrap(Out, Alloc) :- glbf(Out, Alloc).
 wrap([], []) :- \+ glbf(_, _).
 
-%% --- nuovo: versione “green” ---
 sim_greenglbf(Out, Alloc, NodeCarbonCost, Infs, Time) :-
     statistics(inferences, I1),
         statistics(cputime, T1),
