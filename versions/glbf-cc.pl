@@ -48,19 +48,29 @@ glbf_with_node_carbon_and_costs :-
 
 % alloc_node_loads(+Alloc, -NodeLoads)
 alloc_node_loads(Alloc, NodeLoads) :-
-    % 1) estrai tutti i nodi che compaiono come N1 o N2 in Alloc
+    % 1) ottieni tutti i nodi definiti come fatti node/2
+    findall(Node, node(Node, _), AllNodes),
+    % 2) estrai i nodi che compaiono in Alloc come N1 o N2
     findall(N, ( member((N,_,_), Alloc)
               ; member((_,N,_), Alloc)
-              ), NsDup),
-    sort(NsDup, Nodes),
-    % 2) per ciascun nodo somma i BW di tutti i suoi link
+              ), UsedNodesDup),
+    sort(UsedNodesDup, UsedNodes),
+    % 3) calcola i load solo per i nodi usati in Alloc
     findall((Node,Load),
-            ( member(Node, Nodes),
+            ( member(Node, UsedNodes),
               findall(BW,
-                      ( member((Node,_,BW), Alloc)  % archi in uscita da node
-                      ; member((_,Node,BW), Alloc)  % archi in entrata da node
+                      ( member((Node,_,BW), Alloc)
+                      ; member((_,Node,BW), Alloc)
                       ),
                       BWs),
               sum_list(BWs, Load)
             ),
-            NodeLoads). 
+            UsedNodeLoads),
+    % 4) aggiungi i nodi non usati, con load = 0
+    findall((Node, 0),
+            ( member(Node, AllNodes),
+              \+ member(Node, UsedNodes)
+            ),
+            UnusedNodeLoads),
+    % 5) combina i risultati
+    append(UsedNodeLoads, UnusedNodeLoads, NodeLoads).
