@@ -69,7 +69,6 @@ class Experiment:
 
     def set_flows(self):
         if self.prebuilt_flows_file is not None:
-            # mi limito a puntare al file esistente
             self.flows_file = self.prebuilt_flows_file
             return
         
@@ -115,7 +114,6 @@ class Experiment:
     def upload_flows(self):
         
         if self.prebuilt_flows_file is not None:
-            # non ho bisogno di scrivere il file, lo leggo direttamente
             return
         
         flows = [str(f) for f in self.flows]
@@ -189,7 +187,6 @@ class Experiment:
         if not self.result:
             return "\nNo results yet.\n"
 
-        # Header comune
         out = [
             f"Version:      {self.version}",
             f"Flows:        {self.result.get('Flows',     '–')}",
@@ -199,48 +196,36 @@ class Experiment:
             f"Time:         {round(self.result.get('Time',0),4)} s",
             ""
         ]
+        
+        output = self.result.get("Output")
+        if not isinstance(output, dict):
+            out.append(f"No results: {output}")
+            return "\n".join(out)
 
-        if self.version != "cc":
-            # branch non-cc (plain/rel/…)
-            out.append("Paths and Delays:")
-            for (flow, pid), attr in self.result["Output"].items():
-                out.append(f"  Flow {flow}/{pid}:")
-                out.append(f"    Path:      {attr['path']}")
-                b0,b1 = attr['budgets']
-                out.append(f"    Budgets:   min={round(b0,4)} Mbps, max={round(b1,4)} Mbps")
-                out.append(f"    Delay:     {round(attr['delay'],4)} ms")
+        out.append("Paths and Delays:")
+        for (flow, pid), attr in self.result["Output"].items():
+            out.append(f"  Flow {flow}/{pid}:")
+            out.append(f"    Path:      {attr['path']}")
+            b0,b1 = attr['budgets']
+            out.append(f"    Budgets:   min={round(b0,4)} Mbps, max={round(b1,4)} Mbps")
+            out.append(f"    Delay:     {round(attr['delay'],4)} ms")
+        out.append("")
+        out.append("Allocation (link → bandwidth):")
+        for (s,d), bw in self.result["Allocation"].items():
+            out.append(f"  {s} → {d}: {bw} Mbps")
+                
+        if self.version == "cc":
             out.append("")
-            out.append("Allocation (link → bandwidth):")
-            for (s,d), bw in self.result["Allocation"].items():
-                out.append(f"  {s} → {d}: {bw} Mbps")
-
-        else:
-            # modalità “cc”: destrutturiamo le tuple raw
-            out.append("CC Output:")
-            for entry in self.result.get("Output", []):
-                # entry = (flow_id, (path_id, (nodes, ((minb, maxb), delay))))
-                fid, (pid, (nodes, (budgets, delay))) = entry
-                minb, maxb = budgets
-                out.append(f"  Flow ID:           {fid}")
-                out.append(f"    Path ID:         {pid}")
-                out.append(f"    Nodes:           {nodes}")
-                out.append(f"    Bandwidth Range: {round(minb,4)}–{round(maxb,4)} Mbps")
-                out.append(f"    Delay:           {round(delay,4)} ms")
+            out.append("Node Energy and Emissions Summary: ")
+            for entry in self.result.get("NodeCarbonCost", []):
+                out.append(f"  Node:              {entry['Node']}")
+                out.append(f"    Load:             {entry['Load']} Mbps")
+                out.append(f"    CO₂ Emissions:    {entry['CarbonEmissions']:.2e} kgCO₂")
+                out.append(f"    Energy Cost:      {entry['EnergyCost']:.2e} €")
                 out.append("")
-
-            out.append("CC Allocation:")
-            for src, (dst, used_bw) in self.result.get("Allocation", []):
-                out.append(f"  Link: {src} → {dst}")
-                out.append(f"    Used Bandwidth: {used_bw} Mbps")
-            out.append("")
-
-            out.append("Node Carbon Costs:")
-            for node, (load, (carbon_em, energy_cost)) in self.result.get("NodeCarbonCost", []):
-                out.append(f"  Node: {node}")
-                out.append(f"    Load:             {load} Mbps")
-                out.append(f"    CO₂ Emissions:    {carbon_em:.2e} kgCO₂")
-                out.append(f"    Energy Cost:      {energy_cost:.2e} €")
-                out.append("")
+            
+            out.append(f"Total Carbon(Kg): {self.result.get('TotalCarbon')}")
+            out.append(f"Total Cost: {self.result.get('TotalCost')}")
 
         return "\n".join(out)
 
@@ -257,11 +242,7 @@ class Experiment:
         )
         
         # Prepare flows and upload facts
-        self.set_flows()
-        
-        """ for f in self.flows:
-            print(f) """
-        
+        self.set_flows()    
         self.upload()
 
         # Start resource usage tracking
@@ -288,6 +269,10 @@ class Experiment:
                         c.LOAD_ENERGY_PROFILES_QUERY.format(path=file_path)
                     )
                     
+                    prolog.query(
+                        c.LOAD_CARBON_CREDITS_QUERY.format(path=c.CARBON_CREDITS_FILE_PATH)
+                    )
+                    
                     prolog.query_async(
                         c.MAIN_CC_QUERY, find_all=False, query_timeout_seconds=self.timeout
                     )
@@ -295,12 +280,11 @@ class Experiment:
                     prolog.query_async(
                         c.MAIN_QUERY, find_all=False, query_timeout_seconds=self.timeout
                     )
-
                     
                 self.cpu = self.process.cpu_percent(interval=None) - cpu_start
                 self.mem_end = self.process.memory_info().rss / (1024 * 1024)
                 try:
-                    q = prolog.query_async_result()
+                    q = prolog.query_async_result()                    
                     if q and q[0] and q[0]["Output"] != []:        
                         self.result.update(
                             parse_output(q[0], version=self.version)
@@ -330,11 +314,10 @@ class Experiment:
         raw = self.result.get("NodeCarbonCost", [])
         metrics = []
         for entry in raw:
-            node_id, (load, (carbon_em, energy_cost)) = entry
             metrics.append(NodeMetrics(
-                id=node_id,
-                load=load,
-                emission=carbon_em,
-                energy_cost=energy_cost
+                id=entry['Node'],
+                load=entry['Load'],
+                emission=entry['CarbonEmissions'],
+                energy_cost=entry['EnergyCost']
             ))
         return metrics

@@ -49,6 +49,7 @@ SIM_FILE_PATH = join(SIM_DIR, "sim.pl")
 VERSION_FILE_PATH = join(VERSIONS_DIR, VERSION_FILE)
 
 CEV_STANDARD_FLOWS_FILE = join(FLOW_DIR, "flows-cev.pl")
+TEST_STANDARD_FLOWS_FILE = join(FLOW_DIR, "flows-test.pl")
 
 # --- Plots config ---
 PLOT_FORMAT = "pdf"
@@ -112,9 +113,13 @@ ENERGY_PROFILE_FILE_PATH = join(ENERGY_PROFILES_DIR, ENERGY_PROFILE_FILE)
 # query per caricare gli energy profiles
 LOAD_ENERGY_PROFILES_QUERY = "once(loadEnergyProfiles('{path}'))."
 # query principale per la versione cc (carbon‐aware gLBF)
-MAIN_CC_QUERY = "once(sim_greenglbf(Output, Allocation, NodeCarbonCost, Inferences, Time))."
+MAIN_CC_QUERY = "once(sim_greenglbf(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, TotalCost, Inferences, Time))."
 
 
 ENERGY_PROFILES_DIR = DATA_DIR / "energyProfiles"
 ENERGY_PROFILE_FILE_PATH = join(ENERGY_PROFILES_DIR, ENERGY_PROFILE_FILE)
 LOAD_ENERGY_PROFILES_QUERY = "once(loadEnergyProfiles('{path}'))."
+
+CARBON_CREDITS_DIR = DATA_DIR / "carbonCredits"
+CARBON_CREDITS_FILE_PATH = join(CARBON_CREDITS_DIR, "carbonCredits.pl")
+LOAD_CARBON_CREDITS_QUERY = "once(loadCarbonCredits('{path}'))."

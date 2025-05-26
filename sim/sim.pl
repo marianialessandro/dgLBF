@@ -1,4 +1,4 @@
-:-['../versions/glbf-cc.pl'].
+% :-['../glbf.pl'].
 
 
 :- set_prolog_flag(stack_limit, 128 000 000 000).
@@ -17,20 +17,19 @@ sim_glbf(Out, Alloc, Infs, Time) :-
 wrap(Out, Alloc) :- glbf(Out, Alloc).
 wrap([], []) :- \+ glbf(_, _).
 
-sim_greenglbf(Out, Alloc, NodeCarbonCost, Infs, Time) :-
+sim_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Infs, Time) :-
     statistics(inferences, I1),
         statistics(cputime, T1),
-            wrap_greenglbf(Out, Alloc, NodeCarbonCost),
+            wrap_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost),
         statistics(cputime, T2),
     statistics(inferences, I2),
     Infs is I2 - I1 - 5,
     Time  is T2 - T1.
 
-wrap_greenglbf(Out, Alloc, NodeCarbonCost) :-
-    % qui invochi il tuo predicato a 3 argomenti
-    glbf_with_node_carbon_and_costs(Out, Alloc, NodeCarbonCost).
+wrap_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost) :-
+    glbfCC(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost).
 wrap_greenglbf([], [], []) :-
-    \+ glbf_with_node_carbon_and_costs(_, _, _).
+    \+ glbfCC(_, _, _).
 
 loadInfrastructure(Path) :-
     open(Path, read, Str),
@@ -42,14 +41,14 @@ loadFlows(Path) :-
     (retractall(flow(_, _, _, _, _, _, _, _)); true),
     readAndAssert(Str).
 
-% load all energyProfile/4 facts from Path, replacing any existing ones
 loadEnergyProfiles(Path) :-
     open(Path, read, Str),
-    % remove any previously loaded energyProfile/4 facts
-    (   retractall(energyProfile(_,_,_,_))
-    ;   true
-    ),
-    % read & assert each fact until end_of_file, then close(Str)
+    (   retractall(energyProfile(_,_,_,_)); true),
+    readAndAssert(Str).
+
+loadCarbonCredits(Path) :-
+    open(Path, read, Str),
+    (retractall(carbonCredit(_,_,_,_)); true),
     readAndAssert(Str).
 
 readAndAssert(Str) :-
