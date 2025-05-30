@@ -14,7 +14,7 @@ glbfCC :-
     format('Solution                      = ~w~n', [Solution]),
     format('MinCost (€)                  = ~2f~n~n', [TotalCost]).
 
-glbfCC(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost) :-
+glbfCC(BudgetCost, Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost) :-
     glbf(Out, Alloc),
     computeNodeLoad(Alloc, NodeLoads),
     computeCarbonFootprintAndCosts(NodeLoads, NodesCarbonFootprintAndCosts),
@@ -24,11 +24,12 @@ glbfCC(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCos
     carbonCreditCalculator(TotalCarbon, Solution, CarbonCreditCost),
     
     sumRouterCosts(NodesCarbonFootprintAndCosts, EnergyCost),
-    TotalCost is EnergyCost + CarbonCreditCost.
+    TotalCost is EnergyCost + CarbonCreditCost,
 
-glbfCC(Out,Alloc,BudgetCost) :-
-    glbfCC(Out,Alloc,_,_,_,TotalCost),
-    TotalCost =< BudgetCost.
+    TotalCost < BudgetCost.
+
+glbfCC(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost) :-
+    glbfCC(1.0Inf, Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost).
 
 allNodes(AllNodes) :-
     findall(Node, node(Node, _), AllNodes).
