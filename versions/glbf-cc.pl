@@ -23,7 +23,6 @@ glbfCC(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCos
     TotalCarbon is ceiling(TotalCarbonFloat),
     carbonCreditCalculator(TotalCarbon, Solution, CarbonCreditCost),
     
-
     sumRouterCosts(NodesCarbonFootprintAndCosts, EnergyCost),
     TotalCost is EnergyCost + CarbonCreditCost.
 
@@ -36,37 +35,34 @@ allNodes(AllNodes) :-
 
 computeNodeLoad(Alloc, NodeLoads) :-
     allNodes(AllNodes),
-    findall((Node, Load),
-        ( member(Node, AllNodes),
-          nodeBandwidths(Node, Alloc, BWs),
-          sum_list(BWs, Load)
-        ),
-        NodeLoads).
+    computeNodeLoadList(AllNodes, Alloc, NodeLoads).
+
+computeNodeLoadList([Node|Rest], Alloc, [(Node,Load)|NodeLoads]) :-
+    nodeBandwidths(Node, Alloc, BWs),
+    sum_list(BWs, Load),
+    computeNodeLoadList(Rest, Alloc, NodeLoads).
+computeNodeLoadList([], _, []).
+
 
 nodeBandwidths(Node, Alloc, BWs) :-
-    findall(BW,
-        ( member((Node,_,BW), Alloc)
-        ; member((_,Node,BW), Alloc)
-        ),
-        BWs).
+    findall(BW, inOutBw(Node,Alloc,BW), BWs). 
 
-computeCarbonFootprintAndCosts(NodeLoads, NodesCarbonFootprintAndCosts) :-
-    findall((Node, LoadMb, Carbon, Cost),
-        (
-            member((Node, LoadMb), NodeLoads),
-            routerEnergy(Node, LoadMb, EnergyUsed),
-            routerCarbon(Node, EnergyUsed, Carbon),
-            energyCost(Node, EnergyUsed, Cost)
-        ),
-        NodesCarbonFootprintAndCosts
-    ).
+inOutBw(Node, Alloc, BW) :- 
+    member((Node,_,BW), Alloc) ; member((_,Node,BW), Alloc).
 
-sumCarbon([], 0).
+computeCarbonFootprintAndCosts([(Node,LoadMb)|Tail], [(Node,LoadMb,Carbon,Cost)|Rest]) :-
+    routerEnergy(Node, LoadMb, EnergyUsed),
+    routerCarbon(Node, EnergyUsed, Carbon),
+    energyCost(Node, EnergyUsed, Cost),
+    computeCarbonFootprintAndCosts(Tail, Rest).
+computeCarbonFootprintAndCosts([], []).
+
 sumCarbon([(_, _, C, _)|Tail], TotalCarbon) :-
     sumCarbon(Tail, RestCarbon),
     TotalCarbon is RestCarbon + C.
+sumCarbon([], 0).
 
-sumRouterCosts([], 0).
 sumRouterCosts([(_,_,_,Cost)|Tail], Total) :-
     sumRouterCosts(Tail, Rest),
     Total is Rest + Cost.
+sumRouterCosts([], 0).
