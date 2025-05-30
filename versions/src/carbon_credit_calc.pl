@@ -19,20 +19,18 @@ carbonCreditCalculator(TargetCO2, Solution, MinCost) :-
     pair_ids_q(Ids, Qs, Solution).
 
 init(Ids, CO2s, Costs, MaxQs) :-
-    findall(Id-CO2-Cost-MaxQ,
-            carbonCredit(Id, CO2, Cost, MaxQ),
-            Credits),
+    findall(carbonCredit(Id,CO2,Cost,MaxQ), carbonCredit(Id,CO2,Cost,MaxQ), Credits),
     unzip(Credits, Ids, CO2s, Costs, MaxQs).
 
-unzip([], [], [], [], []).
-unzip([I-CO2-C-Cap|T], [I|Is], [CO2|CO2s], [C|Cs], [Cap|Caps]) :-
+unzip([carbonCredit(I,CO2,C,Cap)|T], [I | Is], [CO2 | CO2s], [C | Cs], [Cap | Caps]) :-
     unzip(T, Is, CO2s, Cs, Caps).
+unzip([], [], [], [], []).
 
-constrain_max([], []).
 constrain_max([Q|Qs], [MaxQ|MaxQs]) :-
     Q #=< MaxQ,
     constrain_max(Qs, MaxQs).
+constrain_max([], []).
 
-pair_ids_q([], [], []).
 pair_ids_q([I|Is], [Q|Qs], [id(I,Q)|Rest]) :-
     pair_ids_q(Is, Qs, Rest).
+pair_ids_q([], [], []).
