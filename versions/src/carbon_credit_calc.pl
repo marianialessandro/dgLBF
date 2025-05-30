@@ -10,12 +10,11 @@ carbonCreditCalculator(TargetCO2, Solution, MinCost) :-
 
     scalar_product(CO2s, Qs, #=, TotalCO2),
     TotalCO2 #>= TargetCO2,
-    scalar_product(Costs, Qs, #=, TotalCost),
+    scalar_product(Costs, Qs, #=, MinCost),
 
-    append(Qs, [TotalCost], Vars),
-    labeling([min(TotalCost)], Vars),
+    append(Qs, [MinCost], Vars),
+    labeling([min(MinCost)], Vars),
 
-    MinCost = TotalCost,
     pair_ids_q(Ids, Qs, Solution).
 
 init(Ids, CO2s, Costs, MaxQs) :-
