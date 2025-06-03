@@ -19,6 +19,8 @@ from swiplserver import *
 from .flow import Flow
 from .infrastructure import Infrastructure
 
+from .utils.affinity_utils import get_anti_affinity
+from .utils.prolog_parse import parse_output
 
 class Experiment:
     def __init__(
@@ -30,10 +32,11 @@ class Experiment:
         p: Optional[float] = None,
         gml: Optional[str] = None,
         replica_probability: float = 0.0,
-        version: Literal["plain", "rel", "pp", "aa", "all"] = "plain",
+        version: Literal["plain", "rel", "pp", "aa", "all", "cc"] = "plain",
         seed: Any = None,
         timeout: int = 1800,
         experiment_dir: Path = c.DATA_DIR,
+        prebuilt_flows_file: Optional[Path] = None,
     ):
         np.random.seed(seed)
         random.seed(seed)
@@ -62,8 +65,14 @@ class Experiment:
         self.cpu = 0
         self.mem_start = 0
         self.mem_end = 0
+        
+        self.prebuilt_flows_file = prebuilt_flows_file
 
     def set_flows(self):
+        if self.prebuilt_flows_file is not None:
+            self.flows_file = self.prebuilt_flows_file
+            return
+        
         filename = c.FLOWS_FILE.format(
             size=self.n_flows,
             seed=self.seed,
@@ -93,6 +102,9 @@ class Experiment:
         )
 
     def upload_flows(self):
+        
+        if self.prebuilt_flows_file is not None:
+            return
 
         flows = [str(f) for f in self.flows]
         data_reqs = [f.data_reqs() for f in self.flows]
@@ -143,6 +155,10 @@ class Experiment:
 
     def upload(self):
         self.infrastructure.upload()
+        
+        if self.version == "cc":
+            self.infrastructure.upload_energy_profiles()
+
         self.upload_flows()
 
     def save_result(self):
@@ -161,26 +177,52 @@ class Experiment:
 
     def stringify(self):
         return {k: str(v) for k, v in self.result.items()}
-
+        
     def __str__(self):
         if not self.result:
             return "\nNo results yet.\n"
-        else:
-            res = f"Flows: {self.result['Flows']}" + "\n"
-            res += f"Nodes: {self.result['Nodes']}" + "\n"
-            res += f"Edges: {self.result['Edges']}" + "\n\n"
-            res += "Paths: \n"
-            for flow, attr in self.result["Output"].items():
-                res += f"Flow {flow}: \n"
-                res += f"\tPath: {attr['path']}\n"
-                res += f"\tBudgets: {round(attr['budgets'][0], 4), round(attr['budgets'][1], 4)}\n"
-                res += f"\tDelay: {round(attr['delay'],4)}\n"
-            res += "Allocation: \n"
-            for (s, d), bw in self.result["Allocation"].items():
-                res += f"\tLink {s} -> {d}: {bw} Mbps\n"
-            res += f"Inferences: {self.result['Inferences']}\n"
-            res += f"Time: {round(self.result['Time'], 4)} (s)\n"
-            return res
+
+        out = [
+            f"Version:      {self.version}",
+            f"Flows:        {self.result.get('Flows',     '–')}",
+            f"Nodes:        {self.result.get('Nodes',     '–')}",
+            f"Edges:        {self.result.get('Edges',     '–')}",
+            f"Inferences:   {self.result.get('Inferences','–')}",
+            f"Time:         {round(self.result.get('Time',0),4)} s",
+            ""
+        ]
+        
+        output = self.result.get("Output")
+        if not isinstance(output, dict):
+            out.append(f"No results: {output}")
+            return "\n".join(out)
+
+        out.append("Paths and Delays:")
+        for (flow, pid), attr in self.result["Output"].items():
+            out.append(f"  Flow {flow}/{pid}:")
+            out.append(f"    Path:      {attr['path']}")
+            b0,b1 = attr['budgets']
+            out.append(f"    Budgets:   min={round(b0,4)} Mbps, max={round(b1,4)} Mbps")
+            out.append(f"    Delay:     {round(attr['delay'],4)} ms")
+        out.append("")
+        out.append("Allocation (link → bandwidth):")
+        for (s,d), bw in self.result["Allocation"].items():
+            out.append(f"  {s} → {d}: {bw} Mbps")
+                
+        if self.version == "cc":
+            out.append("")
+            out.append("Node Energy and Emissions Summary: ")
+            for entry in self.result.get("NodeCarbonCost", []):
+                out.append(f"  Node:              {entry['Node']}")
+                out.append(f"    Load:             {entry['Load']} Mbps")
+                out.append(f"    CO₂ Emissions:    {entry['CarbonEmissions']:.2e} kgCO₂")
+                out.append(f"    Energy Cost:      {entry['EnergyCost']:.2e} €")
+                out.append("")
+            
+            out.append(f"Total Carbon(Kg): {self.result.get('TotalCarbon')}")
+            out.append(f"Total Cost: {self.result.get('TotalCost')}")
+
+        return "\n".join(out)
 
     def run(self):
         self.infrastructure = Infrastructure(
@@ -191,6 +233,7 @@ class Experiment:
             seed=self.seed,
             gml=self.gml,
             infra_path=self.experiment_dir / "infrastructures",
+            version=self.version,
         )
 
         self.set_flows()
@@ -210,19 +253,35 @@ class Experiment:
                 prolog.query("consult('{}')".format(c.SIM_FILE_PATH))
                 prolog.query(c.LOAD_INFR_QUERY.format(path=self.infrastructure.file))
                 prolog.query(c.LOAD_FLOWS_QUERY.format(path=self.flows_file))
-                prolog.query_async(
-                    c.MAIN_QUERY, find_all=False, query_timeout_seconds=self.timeout
-                )
+                
+                if self.version == "cc":
+                    # filename = c.ENERGY_PROFILE_FILE.format(name=self.gml)
+                    filename = c.ENERGY_PROFILE_FILE.format(name=self.infrastructure.name)
+                    file_path = os.path.join(c.ENERGY_PROFILES_DIR, filename)
+                    
+                    prolog.query(
+                        c.LOAD_ENERGY_PROFILES_QUERY.format(path=file_path)
+                    )
+                    
+                    prolog.query(
+                        c.LOAD_CARBON_CREDITS_QUERY.format(path=c.CARBON_CREDITS_FILE_PATH)
+                    )
+                    
+                    prolog.query_async(
+                        c.MAIN_CC_QUERY, find_all=False, query_timeout_seconds=self.timeout
+                    )
+                else:
+                    prolog.query_async(
+                        c.MAIN_QUERY, find_all=False, query_timeout_seconds=self.timeout
+                    )
+                    
                 try:
                     q = prolog.query_async_result()
                     self.cpu = self.process.cpu_percent(interval=None) - cpu_start
                     self.mem_end = self.process.memory_info().rss / (1024 * 1024)
                     if q:
                         self.result.update(
-                            parse_output(
-                                q[0],
-                                plain=self.version == "plain",
-                            )
+                            parse_output(q[0], version=self.version)
                         )
                     else:
                         print("No results found.")
@@ -244,81 +303,11 @@ class Experiment:
                 ),
             }
         )
-
-
-def get_anti_affinity(flow_ids):
-
-    N = len(flow_ids)
-    PAIRS = int(math.log2(N))
-
-    all_pairs = list(combinations(flow_ids, 2))
-
-    random.shuffle(all_pairs)
-
-    selected_pairs = all_pairs[:PAIRS]
-
-    anti_affinity = defaultdict(list)
-
-    for f1, f2 in selected_pairs:
-        anti_affinity[f1].append(f2)
-        anti_affinity[f2].append(f1)
-
-    return anti_affinity
-
-
-def parse_prolog(query):
-    if is_prolog_functor(query):
-        if prolog_name(query) != ",":
-            ans = (prolog_name(query), parse_prolog(prolog_args(query)))
-        else:
-            ans = tuple(parse_prolog(prolog_args(query)))
-    elif is_prolog_list(query):
-        ans = [parse_prolog(v) for v in query]
-    elif is_prolog_atom(query):
-        ans = query
-    elif isinstance(query, dict):
-        ans = {k: parse_prolog(v) for k, v in query.items()}
-    else:
-        ans = query
-    return ans
-
-
-def parse_paths(paths):
-    return {
-        (flow, pid): {
-            "path": path,
-            "reliability": reliability,
-            "budgets": budgets,
-            "delay": delay,
-        }
-        for (flow, (pid, (path, (reliability, (budgets, delay))))) in paths
-    }
-
-
-def parse_paths_no_reliability(paths):
-    return {
-        (flow, pid): {
-            "path": path,
-            "budgets": budgets,
-            "delay": delay,
-        }
-        for (flow, (pid, (path, (budgets, delay)))) in paths
-    }
-
-
-def parse_allocation(allocation):
-    return {(s, d): bw for (s, (d, bw)) in allocation}
-
-
-def parse_output(out, plain=True):
-    o = parse_prolog(out)
-    return {
-        "Output": (
-            parse_paths_no_reliability(o["Output"])
-            if plain
-            else parse_paths(o["Output"])
-        ),
-        "Allocation": parse_allocation(o["Allocation"]),
-        "Inferences": o["Inferences"],
-        "Time": o["Time"],
-    }
+        
+        if self.version == "cc":
+            self.result.update({
+                "NodeCarbonCost": [],  # lista vuota di dict
+                "TotalCarbon": None,   # oppure 0 se preferisci
+                "TotalCost": None,
+                "CarbonCredits": [],   # lista vuota di dict
+            })

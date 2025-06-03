@@ -1,30 +1,40 @@
+#!/usr/bin/env python3
+import numpy as np
 from pathlib import Path
 import sys
+
+import config as c
+from classes.experiment import Experiment
 
 from classes.carbonCredit import load_carbon_credits
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import CARBON_CREDITS_FILE_PATH, TEST_STANDARD_FLOWS_FILE
-from classes.experiment_cev import Experiment
+from config import CARBON_CREDITS_FILE_PATH
 
 def main():
-    # Parametri di esempio – modificali a piacere
-    params = {
-        "n_flows": 3,
-        "builder": "gml",
-        "gml": "test",
-        "version": "cc",
-        "seed": 110296,
-        "timeout": 1800,
-    }
+    n_nodes = 100
+    m = int(np.log2(n_nodes))
+    seed = 42
+    n_flows = 5
+    builder = "barabasi_albert"
+    p = None
+    gml = None
+    experiment_dir = Path(c.DATA_DIR)
 
     exp = Experiment(
-        prebuilt_flows_file=Path(TEST_STANDARD_FLOWS_FILE),
-        **params
+        n_flows=n_flows,
+        builder=builder,
+        n=n_nodes,
+        m=m,
+        p=p,
+        gml=gml,
+        seed=seed,
+        version="cc",
+        experiment_dir=experiment_dir
     )
     exp.run()
-    # exp.__str__() mostra Output, Allocation, Inferences, Time
+
     print(exp)
     
     credits = load_carbon_credits(Path(CARBON_CREDITS_FILE_PATH))
@@ -54,7 +64,7 @@ def main():
             f"cioè {total_co2:.2f} kg di CO₂ "
             f"(costo unitario €{cc.costo}, max quantita {cc.max_quantita})"
         )
-        
+
+
 if __name__ == "__main__":
     main()
-    

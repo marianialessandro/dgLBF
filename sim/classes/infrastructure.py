@@ -1,4 +1,4 @@
-# import os
+import os
 from os import makedirs
 from os.path import basename, dirname, exists, join
 from typing import Any, Literal, Optional
@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
+from .utils.generateEnergyProfiles import generateEnergyProfiles
 
 # nx graph obtained as a barabasi albert graph
 class Infrastructure(nx.DiGraph):
@@ -21,6 +22,7 @@ class Infrastructure(nx.DiGraph):
         seed: Any = None,
         gml: Optional[str] = None,
         infra_path: str = c.INFRA_DIR,
+        version: Optional[str] = None,
     ):
         super().__init__(directed=True)
         self.n = n
@@ -52,6 +54,8 @@ class Infrastructure(nx.DiGraph):
         )
         self.file = join(infra_path, filename)
         self.name = basename(self.file).split(".")[0]
+        
+        self.version = version
 
     def init_nodes(self, nodes):
         for n in nodes:
@@ -115,6 +119,25 @@ class Infrastructure(nx.DiGraph):
         with open(file, "w+") as f:
             f.write(str(self))
 
+    def upload_energy_profiles(self):
+        """
+        Ora questo metodo si limita a costruire i parametri per la funzione esterna.
+        """
+        # Solo se version == "cc" genero il file di energy profiles
+        if self.version != "cc":
+            return
+
+        energy_dir = c.ENERGY_PROFILES_DIR
+        filename = c.ENERGY_PROFILE_FILE.format(name=self.name)
+        # Genero il file delegando al modulo esterno:
+        file_path = generateEnergyProfiles(
+            nodes=list(self.nodes()),
+            output_dir=energy_dir,
+            filename=filename,
+            version=self.version,
+            # eventuali altri parametri (opzionali)
+        )
+
     def save_graph(self):
         nx.draw_networkx(self, arrows=True, with_labels=True, **c.FIG_OPTIONS)
         name = f"infrastructure_{self._size}." + c.PLOT_FORMAT
@@ -124,7 +147,7 @@ class Infrastructure(nx.DiGraph):
 @click.command()
 @click.argument("nodes", type=int)
 @click.option(
-    "--seed", "-s", type=int, default=None, help="Seed for the random number generator."
+    "--seed", "-s", type=int, default=None, help="Seed for il RNG."
 )
 def main(nodes, seed):
     infrastructure = Infrastructure(n=nodes, m=int(np.log2(nodes)), seed=seed)
