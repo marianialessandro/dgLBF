@@ -120,22 +120,16 @@ class Infrastructure(nx.DiGraph):
             f.write(str(self))
 
     def upload_energy_profiles(self):
-        """
-        Ora questo metodo si limita a costruire i parametri per la funzione esterna.
-        """
-        # Solo se version == "cc" genero il file di energy profiles
         if self.version != "cc":
             return
 
         energy_dir = c.ENERGY_PROFILES_DIR
         filename = c.ENERGY_PROFILE_FILE.format(name=self.name)
-        # Genero il file delegando al modulo esterno:
         file_path = generateEnergyProfiles(
             nodes=list(self.nodes()),
             output_dir=energy_dir,
             filename=filename,
             version=self.version,
-            # eventuali altri parametri (opzionali)
         )
 
     def save_graph(self):
