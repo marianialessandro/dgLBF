@@ -6,7 +6,7 @@ from classes.carbonCredit import load_carbon_credits
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config import CARBON_CREDITS_FILE_PATH, TEST_STANDARD_FLOWS_FILE
-from classes.experiment_cev import Experiment
+from classes.experiment import Experiment
 
 def main():
     # Parametri di esempio – modificali a piacere

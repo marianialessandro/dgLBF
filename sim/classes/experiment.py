@@ -6,7 +6,7 @@ from itertools import combinations
 from os import makedirs
 from os.path import dirname, exists
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import psutil
 
@@ -63,7 +63,13 @@ class Experiment:
         self.experiment_dir = experiment_dir
 
         self.result: Dict[str, Any] = {}
+        
         self.infrastructure: Optional[Infrastructure] = None
+        
+        self.candidates: Dict[Tuple[str,str], List[List[str]]] = {}
+        self.candidate_facts: List[str] = []
+        
+        self.average_alphas: Dict[Tuple[str,str], List[float]] = {}
 
         self.process = psutil.Process(os.getpid())
         self.cpu = 0
@@ -105,7 +111,7 @@ class Experiment:
             key=lambda f: nx.shortest_path_length(self.infrastructure, f.start, f.end)
         )
 
-    def upload_flows(self):
+    """ def upload_flows(self):
         
         if self.prebuilt_flows_file is not None:
             return
@@ -131,6 +137,8 @@ class Experiment:
             },
         )
 
+        self.candidates = dict(paths)
+
         if aa_reqs and any(aa_reqs.values()):
             for f, anti_aff in aa_reqs.items():
                 if anti_aff:
@@ -155,18 +163,79 @@ class Experiment:
                 )
 
         with open(self.flows_file, "w+") as file:
-            file.write(result)
+            file.write(result) """
+            
+    def upload_flows(self):
+        """
+        Scrive su file:
+         - facts flow(...)
+         - facts data_req(...)
+         - facts protection(...)
+         - facts anti_affinity(...) (se previsti)
+         - facts candidate(...) ← presi da self.candidate_facts
+        """
+        if self.prebuilt_flows_file is not None:
+            return
+
+        # 1) Flows, data_reqs, protection
+        flows = [str(f) for f in self.flows]
+        data_reqs = [f.data_reqs() for f in self.flows]
+        p_protection = [f.path_protection() for f in self.flows]
+        aa_reqs = get_anti_affinity([f.fid for f in self.flows])
+
+        # 2) Preparo la cartella
+        if not exists(dirname(self.flows_file)):
+            makedirs(dirname(self.flows_file))
+
+        # 3) Costruisco il contenuto
+        parts = []
+        parts += flows
+        parts += [""]  # blank line
+        parts += data_reqs
+        parts += [""] 
+        parts += p_protection
+        parts += [""]
+
+        # 4) Anti-affinity
+        if aa_reqs and any(aa_reqs.values()):
+            for f, anti_aff in aa_reqs.items():
+                if anti_aff:
+                    parts.append(
+                        c.ANTI_AFFINITY.format(
+                            fid=f, anti_affinity=str(anti_aff).replace("'", "")
+                        )
+                    )
+            parts += [""]
+
+        # 5) Candidate facts da self.candidate_facts
+        parts += self.candidate_facts
+        parts += [""]  # ultima riga vuota
+
+        # 6) Scrivo sul file
+        with open(self.flows_file, "w+") as file:
+            file.write("\n".join(parts))
 
     def set_energy_profiles(self):
         if self.version != "cc":
             return
-        self.energy_profiles = generate_energy_profiles(
-            nodes=list(self.infrastructure.nodes()),
-        )
         
+        profile_name = ""
+        
+        if self.builder == "gml" and self.gml:
+            profile_name = self.gml
+        else:
+            profile_name = self.infrastructure.name
+            
+            self.energy_profiles = generate_energy_profiles(
+                nodes=list(self.infrastructure.nodes()),
+            )
+            
+
         energy_dir = c.ENERGY_PROFILES_DIR
-        filename = c.ENERGY_PROFILE_FILE.format(name=self.infrastructure.name)
+        filename = c.ENERGY_PROFILE_FILE.format(name=profile_name)
         self.energy_profile_file = os.path.join(energy_dir, filename)
+        
+        print("DF", self.energy_profile_file)
 
     def upload_energy_profiles(self):
         if self.version != "cc" or not self.energy_profiles:
@@ -246,6 +315,29 @@ class Experiment:
 
         return "\n".join(out)
 
+    def calculate_candidates(self):
+        paths = {
+            (f.start, f.end): self.infrastructure.simple_paths(f.start, f.end)
+            for f in self.flows
+        }
+        self.candidates = paths
+
+        # Genero i fatti Prolog, senza scrivere sul file
+        facts = []
+        for (source, target), path_list in paths.items():
+            for idx, path in enumerate(path_list):
+                pid = f"p{idx}_{source}_{target}"
+                # format definito in config.py
+                facts.append(
+                    c.CANDIDATE.format(
+                        pid=pid,
+                        path=str(path).replace("'", ""),
+                        source=source,
+                        target=target,
+                    )
+                )
+        self.candidate_facts = facts
+
     def run(self):
         self.infrastructure = Infrastructure(
             builder=self.builder,
@@ -260,8 +352,8 @@ class Experiment:
 
         self.set_flows()
         self.set_energy_profiles()
-        self.upload()
-        
+        self.calculate_candidates()
+        self.upload()    
         cpu_start = self.process.cpu_percent(interval=None)
         self.mem_start = self.process.memory_info().rss / (1024 * 1024)
 
@@ -279,11 +371,11 @@ class Experiment:
                 
                 if self.version == "cc":
                     # filename = c.ENERGY_PROFILE_FILE.format(name=self.gml)
-                    filename = c.ENERGY_PROFILE_FILE.format(name=self.infrastructure.name)
-                    file_path = os.path.join(c.ENERGY_PROFILES_DIR, filename)
+                    """ filename = c.ENERGY_PROFILE_FILE.format(name=self.infrastructure.name)
+                    file_path = os.path.join(c.ENERGY_PROFILES_DIR, filename) """
                     
                     prolog.query(
-                        c.LOAD_ENERGY_PROFILES_QUERY.format(path=file_path)
+                        c.LOAD_ENERGY_PROFILES_QUERY.format(path=self.energy_profile_file)
                     )
                     
                     prolog.query(
@@ -329,8 +421,8 @@ class Experiment:
         
         if self.version == "cc":
             self.result.update({
-                "NodeCarbonCost": [],  # lista vuota di dict
-                "TotalCarbon": None,   # oppure 0 se preferisci
+                "NodeCarbonCost": [],
+                "TotalCarbon": None,
                 "TotalCost": None,
-                "CarbonCredits": [],   # lista vuota di dict
+                "CarbonCredits": [],
             })
