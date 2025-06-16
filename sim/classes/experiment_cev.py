@@ -262,7 +262,7 @@ class Experiment:
                 prolog.query(c.LOAD_FLOWS_QUERY.format(path=self.flows_file))
                 
                 if self.version == "cc":
-                    filename = c.ENERGY_PROFILE_FILE.format(name=self.gml)
+                    filename = c.ENERGY_PROFILE_FILE.format(name=self.infrastructure.name)
                     file_path = os.path.join(c.ENERGY_PROFILES_DIR, filename)
 
                     prolog.query(
@@ -283,6 +283,7 @@ class Experiment:
                     
                 self.cpu = self.process.cpu_percent(interval=None) - cpu_start
                 self.mem_end = self.process.memory_info().rss / (1024 * 1024)
+                                
                 try:
                     q = prolog.query_async_result()                    
                     if q and q[0] and q[0]["Output"] != []:        
@@ -309,6 +310,14 @@ class Experiment:
                 ),
             }
         )
+        
+        if self.version == "cc":
+            self.result.update({
+                "NodeCarbonCost": [],  # lista vuota di dict
+                "TotalCarbon": None,   # oppure 0 se preferisci
+                "TotalCost": None,
+                "CarbonCredits": [],   # lista vuota di dict
+            })
 
     def get_node_metrics(self) -> List[NodeMetrics]:
         raw = self.result.get("NodeCarbonCost", [])

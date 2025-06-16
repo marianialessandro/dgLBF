@@ -9,8 +9,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
-from .utils.generateEnergyProfiles import generateEnergyProfiles
-
 # nx graph obtained as a barabasi albert graph
 class Infrastructure(nx.DiGraph):
     def __init__(
@@ -106,7 +104,7 @@ class Infrastructure(nx.DiGraph):
             paths = list(
                 nx.all_simple_paths(self, source, target, cutoff=self.diameter)
             )
-        # sort by number of hops between source and target
+        
         paths.sort(key=lambda x: len(x))
 
         if not paths:
@@ -118,19 +116,6 @@ class Infrastructure(nx.DiGraph):
         makedirs(dirname(file)) if not exists(dirname(file)) else None
         with open(file, "w+") as f:
             f.write(str(self))
-
-    def upload_energy_profiles(self):
-        if self.version != "cc":
-            return
-
-        energy_dir = c.ENERGY_PROFILES_DIR
-        filename = c.ENERGY_PROFILE_FILE.format(name=self.name)
-        file_path = generateEnergyProfiles(
-            nodes=list(self.nodes()),
-            output_dir=energy_dir,
-            filename=filename,
-            version=self.version,
-        )
 
     def save_graph(self):
         nx.draw_networkx(self, arrows=True, with_labels=True, **c.FIG_OPTIONS)

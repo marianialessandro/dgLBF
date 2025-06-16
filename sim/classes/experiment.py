@@ -22,6 +22,9 @@ from .infrastructure import Infrastructure
 from .utils.affinity_utils import get_anti_affinity
 from .utils.prolog_parse import parse_output
 
+from .utils.generate_energy_profiles import generate_energy_profiles
+from .utils.save_energy_profiles import save_energy_profiles
+
 class Experiment:
     def __init__(
         self,
@@ -47,6 +50,7 @@ class Experiment:
         self.p = p
         self.gml = gml
 
+        self.energy_profiles: Optional[Dict[Any, Any]] = None
         self.flows = []
         self.n_flows = n_flows
 
@@ -153,13 +157,31 @@ class Experiment:
         with open(self.flows_file, "w+") as file:
             file.write(result)
 
+    def set_energy_profiles(self):
+        if self.version != "cc":
+            return
+        self.energy_profiles = generate_energy_profiles(
+            nodes=list(self.infrastructure.nodes()),
+        )
+        
+        energy_dir = c.ENERGY_PROFILES_DIR
+        filename = c.ENERGY_PROFILE_FILE.format(name=self.infrastructure.name)
+        self.energy_profile_file = os.path.join(energy_dir, filename)
+
+    def upload_energy_profiles(self):
+        if self.version != "cc" or not self.energy_profiles:
+            return
+        # Crea la directory se serve
+        energy_dir = dirname(self.energy_profile_file)
+        if not exists(energy_dir):
+            makedirs(energy_dir)
+        
+        save_energy_profiles(self.energy_profiles, self.energy_profile_file)
+
     def upload(self):
         self.infrastructure.upload()
-        
-        if self.version == "cc":
-            self.infrastructure.upload_energy_profiles()
-
         self.upload_flows()
+        self.upload_energy_profiles()
 
     def save_result(self):
         self.result["Version"] = self.version
@@ -237,8 +259,9 @@ class Experiment:
         )
 
         self.set_flows()
+        self.set_energy_profiles()
         self.upload()
-
+        
         cpu_start = self.process.cpu_percent(interval=None)
         self.mem_start = self.process.memory_info().rss / (1024 * 1024)
 
