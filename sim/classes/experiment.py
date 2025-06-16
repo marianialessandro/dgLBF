@@ -110,70 +110,8 @@ class Experiment:
         self.flows.sort(
             key=lambda f: nx.shortest_path_length(self.infrastructure, f.start, f.end)
         )
-
-    """ def upload_flows(self):
-        
-        if self.prebuilt_flows_file is not None:
-            return
-
-        flows = [str(f) for f in self.flows]
-        data_reqs = [f.data_reqs() for f in self.flows]
-        p_protection = [f.path_protection() for f in self.flows]
-        aa_reqs = get_anti_affinity([f.fid for f in self.flows])
-
-        if not exists(dirname(self.flows_file)):
-            makedirs(dirname(self.flows_file))
-
-        result = ""
-        result += "\n".join(flows) + "\n\n"
-        result += "\n".join(data_reqs) + "\n\n"
-        result += "\n".join(p_protection) + "\n\n"
-
-        paths = defaultdict(
-            lambda: None,
-            {
-                (f.start, f.end): self.infrastructure.simple_paths(f.start, f.end)
-                for f in self.flows
-            },
-        )
-
-        self.candidates = dict(paths)
-
-        if aa_reqs and any(aa_reqs.values()):
-            for f, anti_aff in aa_reqs.items():
-                if anti_aff:
-                    result += (
-                        c.ANTI_AFFINITY.format(
-                            fid=f, anti_affinity=str(anti_aff).replace("'", "")
-                        )
-                        + "\n"
-                    )
-            result += "\n"
-
-        for (source, target), ps in paths.items():
-            for idx, path in enumerate(ps):
-                result += (
-                    c.CANDIDATE.format(
-                        pid=f"p{idx}_{source}_{target}",
-                        path=str(path).replace("'", ""),
-                        source=source,
-                        target=target,
-                    )
-                    + "\n"
-                )
-
-        with open(self.flows_file, "w+") as file:
-            file.write(result) """
             
     def upload_flows(self):
-        """
-        Scrive su file:
-         - facts flow(...)
-         - facts data_req(...)
-         - facts protection(...)
-         - facts anti_affinity(...) (se previsti)
-         - facts candidate(...) ← presi da self.candidate_facts
-        """
         if self.prebuilt_flows_file is not None:
             return
 
@@ -370,10 +308,6 @@ class Experiment:
                 prolog.query(c.LOAD_FLOWS_QUERY.format(path=self.flows_file))
                 
                 if self.version == "cc":
-                    # filename = c.ENERGY_PROFILE_FILE.format(name=self.gml)
-                    """ filename = c.ENERGY_PROFILE_FILE.format(name=self.infrastructure.name)
-                    file_path = os.path.join(c.ENERGY_PROFILES_DIR, filename) """
-                    
                     prolog.query(
                         c.LOAD_ENERGY_PROFILES_QUERY.format(path=self.energy_profile_file)
                     )
