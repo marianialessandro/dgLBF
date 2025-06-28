@@ -1,8 +1,6 @@
-:-['./glbf-plain.pl'].
-:-['../metrics/routerEnergy.pl'].
-:-['../metrics/routerCarbon.pl'].
-:-['../metrics/energyCost.pl'].
-:-['./src/carbon_credit_calc.pl'].
+:- ['../metrics/routerEnergy.pl', '../metrics/routerCarbon.pl', '../metrics/energyCost.pl', '../metrics/nodeLoad.pl'].
+:- ['src/utils.pl', 'src/pprint.pl', 'src/carbon_credit_calc.pl', 'src/carbonAndCostUtils.pl', 'src/getter.pl', 'src/bandwidths.pl'].
+:- ['glbf-plain.pl'].
 
 glbfCC :-
     glbfCC(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbonInt, Solution, TotalCost),
@@ -30,40 +28,3 @@ glbfCC(BudgetCost, Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Soluti
 
 glbfCC(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost) :-
     glbfCC(1.0Inf, Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost).
-
-allNodes(AllNodes) :-
-    findall(Node, node(Node, _), AllNodes).
-
-computeNodeLoad(Alloc, NodeLoads) :-
-    allNodes(AllNodes),
-    computeNodeLoadList(AllNodes, Alloc, NodeLoads).
-
-computeNodeLoadList([Node|Rest], Alloc, [(Node,Load)|NodeLoads]) :-
-    nodeBandwidths(Node, Alloc, BWs),
-    sum_list(BWs, Load),
-    computeNodeLoadList(Rest, Alloc, NodeLoads).
-computeNodeLoadList([], _, []).
-
-
-nodeBandwidths(Node, Alloc, BWs) :-
-    findall(BW, inOutBw(Node,Alloc,BW), BWs). 
-
-inOutBw(Node, Alloc, BW) :- 
-    member((Node,_,BW), Alloc) ; member((_,Node,BW), Alloc).
-
-computeCarbonFootprintAndCosts([(Node,LoadMb)|Tail], [(Node,LoadMb,Carbon,Cost)|Rest]) :-
-    routerEnergy(Node, LoadMb, EnergyUsed),
-    routerCarbon(Node, EnergyUsed, Carbon),
-    energyCost(Node, EnergyUsed, Cost),
-    computeCarbonFootprintAndCosts(Tail, Rest).
-computeCarbonFootprintAndCosts([], []).
-
-sumCarbon([(_, _, C, _)|Tail], TotalCarbon) :-
-    sumCarbon(Tail, RestCarbon),
-    TotalCarbon is RestCarbon + C.
-sumCarbon([], 0).
-
-sumRouterCosts([(_,_,_,Cost)|Tail], Total) :-
-    sumRouterCosts(Tail, Rest),
-    Total is Rest + Cost.
-sumRouterCosts([], 0).
