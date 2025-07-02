@@ -1,5 +1,5 @@
 :- ['../metrics/routerEnergy.pl', '../metrics/routerCarbon.pl', '../metrics/energyCost.pl', '../metrics/nodeLoad.pl'].
-:- ['src/utils.pl', 'src/pprint.pl', 'src/carbon_credit_calc.pl', 'src/carbonAndCostUtils.pl', 'src/getter.pl', 'src/bandwidths.pl'].
+:- ['src/utils.pl', 'src/pprint.pl', 'src/carbon_credit_calc.pl', 'src/carbonAndCostUtils.pl', 'src/getter.pl'].
 :- ['glbf-plain.pl'].
 
 glbfCC :-
@@ -14,7 +14,8 @@ glbfCC :-
 
 glbfCC(BudgetCost, Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost) :-
     glbf(Out, Alloc),
-    computeNodeLoad(Alloc, NodeLoads),
+    allNodes(AllNodes),
+    computeNodeLoad(AllNodes, Alloc, NodeLoads),
     computeCarbonFootprintAndCosts(NodeLoads, NodesCarbonFootprintAndCosts),
 
     sumCarbon(NodesCarbonFootprintAndCosts, TotalCarbonFloat),
