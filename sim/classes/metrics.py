@@ -9,7 +9,6 @@ class NodeMetrics:
     energy_cost: float
 
 class Experiment:
-    # ... qui viene tutto il resto della tua classe ...
 
     def get_node_metrics(self) -> List[NodeMetrics]:
         """

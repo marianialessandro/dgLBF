@@ -38,6 +38,7 @@ RESULTS_FILE = "dglbf-seed={Seed},flows={flows},nodes={nodes},prob={prob}.csv"
 GML_FILE = "{name}.gml"
 ENERGY_PROFILE_FILE = "energyProfile-{name}.pl"
 FLOWS_FILE = "flows{size}-{seed}-{rp}.pl"
+FLOWS_FILE_MULTIEXP = "flows{size}-{seed}-{rp}-{iteration}.pl"
 INFRA_FILE = "infr{name}-{seed}.pl"
 VERSION_FILE = "glbf-{version}.pl"
 
@@ -97,6 +98,7 @@ NODE = "node({nid}, {latency_budget})."
 LINK = "link({source}, {dest}, {lat}, {bw}, {rel})."
 DEGREE = "degree({nid}, {degree})."
 CANDIDATE = "candidate({pid}, {source}, {target}, {path})."
+CANDIDATE_ALPHA = "candidate_alpha({pid}, {alpha})."
 
 
 def df_to_file(df: pd.DataFrame, file_path: Path):
@@ -114,6 +116,8 @@ ENERGY_PROFILE_FILE_PATH = join(ENERGY_PROFILES_DIR, ENERGY_PROFILE_FILE)
 LOAD_ENERGY_PROFILES_QUERY = "once(loadEnergyProfiles('{path}'))."
 # query principale per la versione cc (carbon‐aware gLBF)
 MAIN_CC_QUERY = "once(sim_greenglbf(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, TotalCost, Inferences, Time))."
+
+TEST_CC_QUERY = "once(sim_greenglbf(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, TotalCost, Count, Inferences, Time))."
 
 
 ENERGY_PROFILES_DIR = DATA_DIR / "energyProfiles"

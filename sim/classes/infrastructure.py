@@ -135,3 +135,6 @@ def main(nodes, seed):
 
 if __name__ == "__main__":
     main()
+
+
+# TODO: A COSA SERVE VERSION QUI?

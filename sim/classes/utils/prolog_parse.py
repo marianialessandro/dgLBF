@@ -47,11 +47,11 @@ def parse_allocation(allocation):
 
 def parse_output(out, version: str = "plain"):
     o = parse_prolog(out)
-        
+    
     result = {
         "Output": (
             parse_paths_no_reliability(o["Output"])
-            if version == "plain" or version == "cc"
+            if version == "plain" or "cc" in version
             else parse_paths(o["Output"])
         ),
         "Allocation": parse_allocation(o["Allocation"]),
@@ -59,7 +59,7 @@ def parse_output(out, version: str = "plain"):
         "Time": o["Time"],
     }
     
-    if version == "cc":
+    if "cc" in version:
         result["NodeCarbonCost"] = [
             {
                 "Node": node,
@@ -81,5 +81,8 @@ def parse_output(out, version: str = "plain"):
             }
             for id, quantity in o["Solution"]
         ]
-    
+        
+    if version and "ccbnbT" in version:
+        result["Count"] = o["Count"]
+
     return result

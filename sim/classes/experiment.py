@@ -1,8 +1,5 @@
-import math
 import os
 import random
-from collections import defaultdict
-from itertools import combinations
 from os import makedirs
 from os.path import dirname, exists
 from pathlib import Path
@@ -13,7 +10,6 @@ import psutil
 import config as c
 import networkx as nx
 import numpy as np
-from multipledispatch import dispatch
 from swiplserver import *
 
 from .flow import Flow
@@ -35,7 +31,7 @@ class Experiment:
         p: Optional[float] = None,
         gml: Optional[str] = None,
         replica_probability: float = 0.0,
-        version: Literal["plain", "rel", "pp", "aa", "all", "cc"] = "plain",
+        version: Literal["plain", "rel", "pp", "aa", "all", "ccg", "ccbnb", "ccbnbTScores"] = "plain",
         seed: Any = None,
         timeout: int = 1800,
         experiment_dir: Path = c.DATA_DIR,
@@ -51,7 +47,7 @@ class Experiment:
         self.gml = gml
 
         self.energy_profiles: Optional[Dict[Any, Any]] = None
-        self.flows = []
+        self.flows: List[Flow] = []
         self.n_flows = n_flows
 
         self.replica_probability = (
@@ -62,211 +58,116 @@ class Experiment:
         self.timeout = timeout
         self.experiment_dir = experiment_dir
 
+        self.prebuilt_flows_file = prebuilt_flows_file
+        self.flows_file: Optional[Path] = None  # set in set_flows()
+        self.energy_profile_file: Optional[Path] = None
+
         self.result: Dict[str, Any] = {}
-        
         self.infrastructure: Optional[Infrastructure] = None
-        
-        self.candidates: Dict[Tuple[str,str], List[List[str]]] = {}
-        self.candidate_facts: List[str] = []
-        
-        self.average_alphas: Dict[Tuple[str,str], List[float]] = {}
+        self.candidates: Dict[Tuple[str, str], List[List[str]]] = {}
+        self.average_alphas: Dict[Tuple[str, str], List[float]] = {}
+        self.candidate_lengths: Dict[Tuple[str, str], List[int]] = {}
 
         self.process = psutil.Process(os.getpid())
         self.cpu = 0
         self.mem_start = 0
         self.mem_end = 0
-        
-        self.prebuilt_flows_file = prebuilt_flows_file
 
-    def set_flows(self):
+        self.flow_scores: Dict[str, float] = {}
+
+    def sort_flows(self) -> None:
+        # Assicurati che i candidati siano calcolati
+        if not self.candidates:
+            self.calculate_candidates()
+
+        self.flows.sort(key=lambda flow: len(self.candidates.get((flow.start, flow.end), [])))
+        
+        self.flow_scores = {flow.fid: len(self.candidates.get((flow.start, flow.end), []))
+                            for flow in self.flows}
+
+    def set_flowsFileName(self):
         if self.prebuilt_flows_file is not None:
             self.flows_file = self.prebuilt_flows_file
+        else:
+            filename = c.FLOWS_FILE.format(
+                size=self.n_flows,
+                seed=self.seed,
+                rp=self.replica_probability,
+            )
+            self.flows_file = self.experiment_dir / "flows" / filename
+            
+    def set_energy_profile_file(self):
+        if "cc" in self.version:
+            if self.builder == "gml" and self.gml:
+                profile_name = self.gml
+            else:
+                filename = c.ENERGY_PROFILE_FILE.format(
+                    name=self.infrastructure.name
+                )
+                self.energy_profile_file = self.experiment_dir / "energyProfiles" / filename      
+
+    def set_flows(self):
+        # Se il file è prebuilt, termina
+        if self.prebuilt_flows_file is not None:
             return
-        
-        filename = c.FLOWS_FILE.format(
-            size=self.n_flows,
-            seed=self.seed,
-            rp=self.replica_probability,
-        )
-        self.flows_file = self.experiment_dir / "flows" / filename
-        self.flows: List[Flow] = []
+
+        # Genera i flussi casuali garantendo percorsi esistenti
+        self.flows = []
         for i in range(self.n_flows):
-            exists = False
-            while not exists:
+            exists_path = False
+            while not exists_path:
                 start, end = np.random.choice(
                     self.infrastructure.nodes, size=2, replace=False
                 )
-                exists = nx.has_path(self.infrastructure, start, end)
+                exists_path = nx.has_path(self.infrastructure, start, end)
             self.flows.append(
                 Flow(
-                    f"f{i}",
-                    start,
-                    end,
-                    random=True,
-                    rep_prob=self.replica_probability,
+                    f"f{i}", start, end, random=True, rep_prob=self.replica_probability
                 )
             )
-
+        # Ordina i flussi per lunghezza del percorso
         self.flows.sort(
             key=lambda f: nx.shortest_path_length(self.infrastructure, f.start, f.end)
         )
-            
+
     def upload_flows(self):
         if self.prebuilt_flows_file is not None:
             return
 
-        # 1) Flows, data_reqs, protection
         flows = [str(f) for f in self.flows]
         data_reqs = [f.data_reqs() for f in self.flows]
         p_protection = [f.path_protection() for f in self.flows]
         aa_reqs = get_anti_affinity([f.fid for f in self.flows])
 
-        # 2) Preparo la cartella
-        if not exists(dirname(self.flows_file)):
-            makedirs(dirname(self.flows_file))
+        flows_path = self.flows_file
+    
+    
+        if not exists(dirname(flows_path)):
+            makedirs(dirname(flows_path))
 
-        # 3) Costruisco il contenuto
-        parts = []
+        parts: List[str] = []
         parts += flows
-        parts += [""]  # blank line
+        parts.append("")
         parts += data_reqs
-        parts += [""] 
+        parts.append("")
         parts += p_protection
-        parts += [""]
+        parts.append("")
 
-        # 4) Anti-affinity
         if aa_reqs and any(aa_reqs.values()):
             for f, anti_aff in aa_reqs.items():
                 if anti_aff:
                     parts.append(
                         c.ANTI_AFFINITY.format(
-                            fid=f, anti_affinity=str(anti_aff).replace("'", "")
+                            fid=f,
+                            anti_affinity=str(anti_aff).replace("'", ""),
                         )
                     )
-            parts += [""]
+            parts.append("")
 
-        # 5) Candidate facts da self.candidate_facts
-        parts += self.candidate_facts
-        parts += [""]  # ultima riga vuota
-
-        # 6) Scrivo sul file
-        with open(self.flows_file, "w+") as file:
-            file.write("\n".join(parts))
-
-    def set_energy_profiles(self):
-        if self.version != "cc":
-            return
-        
-        profile_name = ""
-        
-        if self.builder == "gml" and self.gml:
-            profile_name = self.gml
-        else:
-            profile_name = self.infrastructure.name
-            
-            self.energy_profiles = generate_energy_profiles(
-                nodes=list(self.infrastructure.nodes()),
-            )
-            
-
-        energy_dir = c.ENERGY_PROFILES_DIR
-        filename = c.ENERGY_PROFILE_FILE.format(name=profile_name)
-        self.energy_profile_file = os.path.join(energy_dir, filename)
-        
-        print("DF", self.energy_profile_file)
-
-    def upload_energy_profiles(self):
-        if self.version != "cc" or not self.energy_profiles:
-            return
-        # Crea la directory se serve
-        energy_dir = dirname(self.energy_profile_file)
-        if not exists(energy_dir):
-            makedirs(energy_dir)
-        
-        save_energy_profiles(self.energy_profiles, self.energy_profile_file)
-
-    def upload(self):
-        self.infrastructure.upload()
-        self.upload_flows()
-        self.upload_energy_profiles()
-
-    def save_result(self):
-        self.result["Version"] = self.version
-        self.result["Seed"] = self.seed
-        self.result["RepProb"] = self.replica_probability
-        self.result["Infr"] = self.infrastructure.name
-        self.result["Flows"] = self.n_flows
-        self.result["Nodes"] = len(self.infrastructure.nodes)
-        self.result["Edges"] = len(self.infrastructure.edges)
-        self.result["Builder"] = self.builder
-
-        self.result["cpu"] = self.cpu
-        self.result["mem_start"] = self.mem_start
-        self.result["mem_end"] = self.mem_end
-
-    def stringify(self):
-        return {k: str(v) for k, v in self.result.items()}
-        
-    def __str__(self):
-        if not self.result:
-            return "\nNo results yet.\n"
-
-        out = [
-            f"Version:      {self.version}",
-            f"Flows:        {self.result.get('Flows',     '–')}",
-            f"Nodes:        {self.result.get('Nodes',     '–')}",
-            f"Edges:        {self.result.get('Edges',     '–')}",
-            f"Inferences:   {self.result.get('Inferences','–')}",
-            f"Time:         {round(self.result.get('Time',0),4)} s",
-            ""
-        ]
-        
-        output = self.result.get("Output")
-        if not isinstance(output, dict):
-            out.append(f"No results: {output}")
-            return "\n".join(out)
-
-        out.append("Paths and Delays:")
-        for (flow, pid), attr in self.result["Output"].items():
-            out.append(f"  Flow {flow}/{pid}:")
-            out.append(f"    Path:      {attr['path']}")
-            b0,b1 = attr['budgets']
-            out.append(f"    Budgets:   min={round(b0,4)} Mbps, max={round(b1,4)} Mbps")
-            out.append(f"    Delay:     {round(attr['delay'],4)} ms")
-        out.append("")
-        out.append("Allocation (link → bandwidth):")
-        for (s,d), bw in self.result["Allocation"].items():
-            out.append(f"  {s} → {d}: {bw} Mbps")
-                
-        if self.version == "cc":
-            out.append("")
-            out.append("Node Energy and Emissions Summary: ")
-            for entry in self.result.get("NodeCarbonCost", []):
-                out.append(f"  Node:              {entry['Node']}")
-                out.append(f"    Load:             {entry['Load']} Mbps")
-                out.append(f"    CO₂ Emissions:    {entry['CarbonEmissions']:.2e} kgCO₂")
-                out.append(f"    Energy Cost:      {entry['EnergyCost']:.2e} €")
-                out.append("")
-            
-            out.append(f"Total Carbon(Kg): {self.result.get('TotalCarbon')}")
-            out.append(f"Total Cost: {self.result.get('TotalCost')}")
-
-        return "\n".join(out)
-
-    def calculate_candidates(self):
-        paths = {
-            (f.start, f.end): self.infrastructure.simple_paths(f.start, f.end)
-            for f in self.flows
-        }
-        self.candidates = paths
-
-        # Genero i fatti Prolog, senza scrivere sul file
-        facts = []
-        for (source, target), path_list in paths.items():
-            for idx, path in enumerate(path_list):
+        for (source, target), paths in self.candidates.items():
+            for idx, path in enumerate(paths):
                 pid = f"p{idx}_{source}_{target}"
-                # format definito in config.py
-                facts.append(
+                parts.append(
                     c.CANDIDATE.format(
                         pid=pid,
                         path=str(path).replace("'", ""),
@@ -274,9 +175,214 @@ class Experiment:
                         target=target,
                     )
                 )
-        self.candidate_facts = facts
+        parts.append("")
+
+        for (source, target), alphas in self.average_alphas.items():
+            for idx, alpha in enumerate(alphas):
+                pid = f"p{idx}_{source}_{target}"
+                parts.append(
+                    c.CANDIDATE_ALPHA.format(pid=pid, alpha=round(alpha, 4))
+                )
+        parts.append("")
+        
+        if hasattr(self, 'candidate_lengths') and self.candidate_lengths:
+            for (source, target), lengths in self.candidate_lengths.items():
+                for idx, length in enumerate(lengths):
+                    pid = f"p{idx}_{source}_{target}"
+                    parts.append(f"candidate_length({pid}, {length}).")
+            parts.append("")    
+
+        with open(flows_path, "w+") as file:
+            file.write("\n".join(parts))
+
+    def set_energy_profiles(self):
+        if "cc" in self.version:
+            if self.builder == "gml" and self.gml:
+                profile_name = self.gml
+            else:
+                profile_name = self.infrastructure.name
+                profiles_list = generate_energy_profiles(
+                    nodes=list(self.infrastructure.nodes()),
+                )
+                self.energy_profiles = {str(p.node): p for p in profiles_list}
+
+ 
+    def upload_energy_profiles(self):
+        if "cc" not in self.version.lower() or not self.energy_profiles:
+            return
+
+        self.set_energy_profile_file()
+
+        energy_path = self.energy_profile_file
+        energy_dir = dirname(energy_path)
+        if not exists(energy_dir):
+            makedirs(energy_dir)
+        save_energy_profiles(self.energy_profiles.values(), energy_path)
+
+    def upload(self):
+        self.infrastructure.upload()
+        self.upload_flows()
+        self.upload_energy_profiles()
+
+    def save_result(self, prologResult):
+        self.result.update(prologResult)
+
+    def stringify(self):
+        return {k: str(v) for k, v in self.result.items()}
+
+    def printResult(self, result) -> list[str]:
+        lines = [
+            f"Version:      {self.version}",
+            f"Flows:        {result.get('Flows', '–')}",
+            f"Nodes:        {result.get('Nodes', '–')}",
+            f"Edges:        {result.get('Edges', '–')}",
+            f"Inferences:   {result.get('Inferences', '–')}",
+        ]
+
+        # Time formatting sicuro
+        t = result.get("Time", None)
+        if isinstance(t, (int, float)):
+            lines.append(f"Time:         {t:.4f} s")
+        elif t is None:
+            lines.append("Time:         –")
+        else:
+            lines.append(f"Time:         {t}")
+        lines.append("")
+
+        output = result.get("Output")
+
+        # Nessun risultato strutturato
+        if not isinstance(output, dict):
+            lines.append(f"No results: {output}")
+            return lines
+
+        # Sezione Paths and Delays
+        lines.append("Paths and Delays:")
+        for (flow, pid), attr in output.items():
+            lines.append(f"  Flow {flow}/{pid}:")
+            path = attr.get("path")
+            if path is not None:
+                lines.append(f"    Path:      {path}")
+            budgets = attr.get("budgets")
+            if (
+                isinstance(budgets, (list, tuple)) and
+                len(budgets) == 2 and
+                all(isinstance(b, (int, float)) for b in budgets)
+            ):
+                b0, b1 = budgets
+                lines.append(f"    Budgets:   min={b0:.4f}, max={b1:.4f}")
+            delay = attr.get("delay")
+            if isinstance(delay, (int, float)):
+                lines.append(f"    Delay:     {delay:.4f} ms")
+        lines.append("")
+
+        # Sezione Allocation (solo se presente e non vuota)
+        allocation = result.get("Allocation") or {}
+        if isinstance(allocation, dict) and allocation:
+            lines.append("Allocation (link → bandwidth):")
+            for (s, d), bw in allocation.items():
+                lines.append(f"  {s} → {d}: {bw} Mbps")
+            lines.append("")
+
+        # Sezione Carbon/Cost se versione "cc"
+        if "cc" in (self.version or "").lower():
+            lines.append("Node Energy and Emissions Summary:")
+            node_costs = result.get("NodeCarbonCost") or []
+            if node_costs:
+                for entry in node_costs:
+                    node = entry.get("Node", "–")
+                    load = entry.get("Load", "–")
+                    ce = entry.get("CarbonEmissions", None)
+                    ec = entry.get("EnergyCost", None)
+
+                    lines.append(f"  Node:              {node}")
+                    lines.append(f"    Load:             {load} Mbps")
+                    if isinstance(ce, (int, float)):
+                        lines.append(f"    CO₂ Emissions:    {ce:.2e} kgCO₂")
+                    else:
+                        lines.append(f"    CO₂ Emissions:    {ce}")
+                    if isinstance(ec, (int, float)):
+                        lines.append(f"    Energy Cost:      {ec:.2e} €")
+                    else:
+                        lines.append(f"    Energy Cost:      {ec}")
+                    lines.append("")
+            total_carbon = result.get("TotalCarbon", None)
+            total_cost = result.get("TotalCost", None)
+            if total_carbon is not None:
+                lines.append(f"Total Carbon(Kg): {total_carbon}")
+            if total_cost is not None:
+                lines.append(f"Total Cost: {total_cost}")
+
+        # Info extra per versioni bnbT (case-insensitive)
+        if "bnbt" in (self.version or "").lower():
+            count = result.get("Count", None)
+            if count is not None:
+                lines.append(f"Examinated Solution: {count}")
+
+        return lines
+
+
+
+    def __str__(self) -> str:
+        return "\n".join(self.printResult(self.result))
+
+
+
+    def calculate_candidates(self):
+        paths = {
+            (f.start, f.end): sorted(
+                self.infrastructure.simple_paths(f.start, f.end), key=lambda p: len(p)
+            ) for f in self.flows
+        }
+        self.candidates = paths
+
+    def calculate_average_alphas(self):
+        if self.energy_profiles is None:
+            raise RuntimeError("Chiamami solo dopo set_energy_profiles()")
+        self.average_alphas = {
+            key: [
+                sum(self.energy_profiles[n].alphaDay for n in path) / len(path)
+                for path in paths
+            ] for key, paths in self.candidates.items()
+        }
+
+    def sort_candidates_by_alpha(self):
+        for key, paths in self.candidates.items():
+            alphas = self.average_alphas[key]
+            sorted_pairs = sorted(zip(paths, alphas), key=lambda pa: pa[1])
+            self.candidates[key], self.average_alphas[key] = (
+                [p for p, _ in sorted_pairs], [a for _, a in sorted_pairs]
+            )
+            
+    def calculate_candidate_lengths(self) -> Dict[Tuple[str, str], List[int]]:
+        if not hasattr(self, 'candidates') or not self.candidates:
+            raise RuntimeError("Chiamami solo dopo calculate_candidates()")
+        
+        self.candidate_lengths: Dict[Tuple[str, str], List[int]] = {
+            key: [len(path) for path in paths]
+            for key, paths in self.candidates.items()
+        }
 
     def run(self):
+        self.prepare_inputs()
+        self.set_flowsFileName()
+        
+        self.infrastructure.upload()
+        if self.version and "ccbnbT" in self.version:
+            self.sort_flows()
+            self.calculate_average_alphas()
+            self.sort_candidates_by_alpha()
+            self.calculate_candidate_lengths()
+            
+        self.upload_flows()
+        self.upload_energy_profiles()
+        
+        result = self.execute_experiment()
+        
+        if result:
+            self.save_result(result)
+
+    def prepare_inputs(self):
         self.infrastructure = Infrastructure(
             builder=self.builder,
             n=self.n,
@@ -287,76 +393,99 @@ class Experiment:
             infra_path=self.experiment_dir / "infrastructures",
             version=self.version,
         )
-
+        
         self.set_flows()
         self.set_energy_profiles()
         self.calculate_candidates()
-        self.upload()    
+
+    def execute_experiment(self):
         cpu_start = self.process.cpu_percent(interval=None)
         self.mem_start = self.process.memory_info().rss / (1024 * 1024)
-
-        # with PrologMQI(launch_mqi=False, port=4242, password="debugnow") as mqi:
-        with PrologMQI() as mqi:
-            with mqi.create_thread() as prolog:
-                prolog.query(
-                    "consult('{}')".format(
-                        c.VERSION_FILE_PATH.format(version=self.version)
-                    )
-                )
-                prolog.query("consult('{}')".format(c.SIM_FILE_PATH))
-                prolog.query(c.LOAD_INFR_QUERY.format(path=self.infrastructure.file))
-                prolog.query(c.LOAD_FLOWS_QUERY.format(path=self.flows_file))
-                
-                if self.version == "cc":
-                    prolog.query(
-                        c.LOAD_ENERGY_PROFILES_QUERY.format(path=self.energy_profile_file)
-                    )
-                    
-                    prolog.query(
-                        c.LOAD_CARBON_CREDITS_QUERY.format(path=c.CARBON_CREDITS_FILE_PATH)
-                    )
-                    
-                    prolog.query_async(
-                        c.MAIN_CC_QUERY, find_all=False, query_timeout_seconds=self.timeout
-                    )
-                else:
-                    prolog.query_async(
-                        c.MAIN_QUERY, find_all=False, query_timeout_seconds=self.timeout
-                    )
-                    
-                try:
-                    q = prolog.query_async_result()
-                    self.cpu = self.process.cpu_percent(interval=None) - cpu_start
-                    self.mem_end = self.process.memory_info().rss / (1024 * 1024)
-                    if q:
-                        self.result.update(
-                            parse_output(q[0], version=self.version)
-                        )
-                    else:
-                        print("No results found.")
-                        self.empty_update("no_result")
-                except PrologQueryTimeoutError:
-                    print("Timeout reached. Skipping this experiment.")
-                    self.empty_update("timeout")
-
-        self.save_result()
-
-    def empty_update(self, reason: str):
-        self.result.update(
-            {
-                "Output": reason,
-                "Allocation": None,
-                "Inferences": None,
-                "Time": (
-                    self.timeout if "Time" not in self.result else self.result["Time"]
-                ),
-            }
-        )
         
-        if self.version == "cc":
-            self.result.update({
+        result = None
+
+        with PrologMQI() as mqi, mqi.create_thread() as prolog:
+            self.consult_prolog_files(prolog)
+            result = self.run_prolog_query(prolog)
+
+        self.mem_end = self.process.memory_info().rss / (1024 * 1024)
+        self.cpu = self.process.cpu_percent(interval=None) - cpu_start
+        
+        return result
+
+    def consult_prolog_files(self, prolog):
+                
+        prolog.query(
+            "consult('{}')".format(
+                c.VERSION_FILE_PATH.format(version=self.version)
+            )
+        )
+
+        prolog.query(f"consult('{c.SIM_FILE_PATH}')")
+        prolog.query(c.LOAD_INFR_QUERY.format(path=self.infrastructure.file))
+        prolog.query(c.LOAD_FLOWS_QUERY.format(path=self.flows_file))
+        if "cc" in self.version:
+            prolog.query(c.LOAD_ENERGY_PROFILES_QUERY.format(path=self.energy_profile_file))
+            prolog.query(c.LOAD_CARBON_CREDITS_QUERY.format(path=c.CARBON_CREDITS_FILE_PATH))
+
+    def run_prolog_query(self, prolog):
+        """ query = c.MAIN_CC_QUERY if "cc" in self.version else c.MAIN_QUERY """
+        
+        query = None
+        
+        # if "ccbnbT" in self.version or "ccbnbT2" in self.version:
+        if self.version and "ccbnbT" in self.version:
+            query = c.TEST_CC_QUERY
+        elif "cc" in self.version:
+            query = c.MAIN_CC_QUERY
+        else:
+            query = c.MAIN_QUERY
+        
+        prolog.query_async(query, find_all=False, query_timeout_seconds=self.timeout)
+        try:
+            result = prolog.query_async_result()
+            
+            if result:
+                return self.processResult(result[0])
+            else:
+                return self.empty_update("no_result")
+                
+        except PrologQueryTimeoutError:
+            return self.empty_update("timeout")
+            
+    def processResult(self, prologResult):
+        result: Dict[str, Any] = {
+            "Version": self.version,
+            "Seed": self.seed,
+            "RepProb": self.replica_probability,
+            "Infr": self.infrastructure.name,
+            "Flows": self.n_flows,
+            "Nodes": len(self.infrastructure.nodes),
+            "Edges": len(self.infrastructure.edges),
+            "Builder": self.builder,
+            "cpu": self.cpu,
+            "mem_start": self.mem_start,
+            "mem_end": self.mem_end,
+        }
+
+        parsed = parse_output(prologResult, version=self.version)
+
+        result.update(parsed)
+
+        return result
+
+    def empty_update(self, reason: str) -> dict:
+        result = {
+            "Output": reason,
+            "Allocation": None,
+            "Inferences": None,
+            "Time": self.timeout,
+        }
+        if "cc" in self.version:
+            result.update({
                 "NodeCarbonCost": [],
                 "TotalCarbon": None,
                 "TotalCost": None,
                 "CarbonCredits": [],
             })
+        return result

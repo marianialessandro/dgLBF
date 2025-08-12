@@ -1,3 +1,5 @@
+:- table routerLoad/3, allFlows/1, allNodes/1.
+
 updateCapacities([N1,N2|Ns], BitRate, OldAlloc, NewAlloc) :-
     select((N1,N2,OldC), OldAlloc, Rest), NewC is OldC + BitRate,
     updateCapacities([N2|Ns], BitRate, [(N1,N2,NewC)|Rest], NewAlloc).
@@ -28,3 +30,18 @@ sortPaths(Order, (FlowId1, _, (_, Reliability1, _, _)), (FlowId2, _, (_, Reliabi
     ; Reliability1 < Reliability2 -> Order = '>'
     ; Order = '='
     ).
+
+flowDetails(FlowId, S, D, PacketSize, BitRate, Budget, Th) :-
+    flow(FlowId, S, D),
+    dataReqs(FlowId, PacketSize, _, BitRate, Budget, Th).
+
+allFlows(Flows) :-
+    findall(FlowId, flow(FlowId, _, _), Flows).
+
+routerLoad(Node, NodeMetrics, Load) :-
+    member((Node, L), NodeMetrics), !,
+    Load = L.
+routerLoad(_, _, 0).
+
+allNodes(AllNodes) :-
+    findall(Node, node(Node, _), AllNodes).

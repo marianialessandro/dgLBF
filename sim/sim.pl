@@ -26,6 +26,17 @@ sim_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, T
     Infs is I2 - I1 - 5,
     Time  is T2 - T1.
 
+sim_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Count, Infs, Time) :-
+    statistics(inferences, I1),
+        statistics(cputime, T1),
+            wrap_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Count),
+        statistics(cputime, T2),
+    statistics(inferences, I2),
+    Infs is I2 - I1 - 5,
+    Time  is T2 - T1.
+
+wrap_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Count) :-
+    glbfCC(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Count).
 wrap_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost) :-
     glbfCC(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost).
 wrap_greenglbf([], [], []) :-
@@ -43,7 +54,7 @@ loadFlows(Path) :-
 
 loadEnergyProfiles(Path) :-
     open(Path, read, Str),
-    (   retractall(energyProfile(_,_,_,_)); true),
+    (retractall(energyProfile(_,_,_,_)); true),
     readAndAssert(Str).
 
 loadCarbonCredits(Path) :-

@@ -6,7 +6,8 @@ class EnergyProfile:
         eps: float,
         t1: int,
         t2: int,
-        alpha: float,
+        alphaDay: float,
+        alphaNight: float,
         cost_kwh: float,
     ):
         self.node = node
@@ -14,12 +15,25 @@ class EnergyProfile:
         self.eps = eps
         self.t1 = t1
         self.t2 = t2
-        self.alpha = alpha
+        self.alphaDay = alphaDay
+        self.alphaNight = alphaNight
         self.cost_kwh = cost_kwh
 
     def to_prolog(self) -> str:
-        return (
+        factEp = (
             f"energyProfile({self.node}, {self.idle_power:.2f}, "
             f"p({self.eps:.1e}, {self.t1}, {self.t2}), "
-            f"{self.alpha:.4f}, {self.cost_kwh:.2f})."
+            f"{self.cost_kwh:.2f})."
         )
+        
+        factCID = (
+            f"carbonIntensity({self.node}, day, "
+            f"{self.alphaDay:.2f})."
+        )
+        
+        factCIN = (
+            f"carbonIntensity({self.node}, night, "
+            f"{self.alphaNight:.2f})."
+        )
+        
+        return "\n".join([factEp, factCID, factCIN])
