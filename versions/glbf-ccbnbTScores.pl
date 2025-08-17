@@ -25,18 +25,49 @@ glbfCC(BudgetCost, Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Soluti
 glbfCC(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Count) :-
     glbfCC(1.0Inf, Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Count).
 
+idleCarbon(InitialCarbon) :-
+    allNodes(Nodes),
+    idleCarbonRec(Nodes, InitialCarbon).
+
+idleCarbonRec([Node | Tail], Carbon) :-
+    idleCarbonRec(Tail, TmpCarbon),
+    routerCarbon(Node, 0, RouterCarbon),
+    Carbon is TmpCarbon + RouterCarbon.
+idleCarbonRec([], 0).
+
+
 exploreSolutions(Out, Alloc, Carbon, Count) :-
     allFlows(Flows),
     initScores(Flows, [], [], CandidateScoresByFlow),
-    /* upperBound(CandidateScoresByFlow, 0, [], [], UpperBound, UpperCost), */
 
-    upperBound(OutU, AllocU, _, UpperBound, UpperCost),
+    upperBound(OutU, AllocU, NodeLoads, UpperBound, UpperCost),
 
-    format('Upper Bound Calcolato ~wkg ~w€ ~n', [UpperBound, UpperCost]),
+    % format('Upper Bound Calcolato ~wkg ~w€ ~n', [UpperBound, UpperCost]),
+    format('Soluzione GREEDY PER UPPER:~n'),
+    format('  Out        = ~w~n', [OutU]),
+    format('  Alloc      = ~w~n', [AllocU]),
+    format('  NodeLoad   = ~w~n', [NodeLoads]),
+    format('  TotalCarbon= ~w~n', [UpperBound]),
+    format('  Cost       = ~w~n~n~n', [UpperCost]),
 
-    searchBest(state([], [], [], 0, CandidateScoresByFlow), bestState(UpperBound, UpperCost, [(OutU, AllocU)], 1), FinalState),
-    FinalState = bestState(Carbon, _, Solutions, Count),
+    idleCarbon(InitialCarbon),
+
+    % Prova la ricerca; se fallisce o non produce soluzioni,
+    % usa direttamente l'upper bound come risultato finale.
+    (   searchBest(
+            state([], [], [], InitialCarbon, CandidateScoresByFlow),
+            bestState(UpperBound, UpperCost, [(OutU, AllocU)], 1),
+            FinalState0
+        )
+    ->  true
+    ;   FinalState0 = bestState(UpperBound, UpperCost, [(OutU, AllocU)], 1),
+        format('Nessun miglioramento trovato: uso la soluzione UPPER BOUND.~n')
+    ),
+
+    FinalState0 = bestState(Carbon, _, Solutions, Count),
+
     member((Out, Alloc), Solutions).
+
 
 searchBest(state(Alloc, Out, NodeMetrics, Carbon, []), BestState, NewBestState) :-
     hasAllFlowsRouted(Out),
@@ -56,7 +87,6 @@ searchBest(state(OldAlloc, OldOut, OldNodeMetrics, OldCarbon, [(FlowId, SortedCa
     \+ shouldPrune(CarbonCeil, Cost, BestState),
     
     lowerBound(CandidateScoresByFlowTail, NewCarbon, NewAlloc, NewNodeMetrics, LowerBoundCarbon, LowerBoundCost),
-    format('Pre Should prune~n'),
     \+ shouldPrune(LowerBoundCarbon, LowerBoundCost, BestState),
     
     list_to_set(Path, UpdatedNodes),
@@ -73,7 +103,8 @@ updateBestState(Out, Alloc, NodeMetrics, Carbon, bestState(BestCarbon, _, _, BCo
     format('Soluzione Trovata:~n'),
     format('  Out        = ~w~n', [Out]),
     format('  Alloc      = ~w~n', [Alloc]),
-    format('  TotalCarbon= ~w~n~n~n~n~n~n~n', [Carbon]),
+    format('  TotalCarbon= ~w~n', [Carbon]),
+    format('  Cost= ~w~n~n~n~n~n~n~n', [NewCostEnergy]),
 
     NewCount  is BCount + 1.
 
@@ -86,7 +117,8 @@ updateBestState(Out, Alloc, NodeMetrics, Carbon, bestState(BestCarbon, BCost, _,
     format('Soluzione Trovata:~n'),
     format('  Out        = ~w~n', [Out]),
     format('  Alloc      = ~w~n', [Alloc]),
-    format('  TotalCarbon= ~w~n~n~n~n~n~n~n', [Carbon]),
+    format('  TotalCarbon= ~w~n', [Carbon]),
+    format('  Cost= ~w~n~n~n~n~n~n~n', [Cost]),
 
     NewCount   is BCount + 1.
 
@@ -99,7 +131,8 @@ updateBestState(Out, Alloc, NodeMetrics, Carbon, bestState(BestCarbon, BCost, BS
     format('Soluzione Trovata:~n'),
     format('  Out        = ~w~n', [Out]),
     format('  Alloc      = ~w~n', [Alloc]),
-    format('  TotalCarbon= ~w~n~n~n~n~n~n~n', [Carbon]),
+    format('  TotalCarbon= ~w~n', [Carbon]),
+    format('  Cost= ~w~n~n~n~n~n~n~n', [Cost]),
 
     NewCount   is BCount + 1.
 
@@ -286,47 +319,3 @@ updateScores([(FlowId, OldCandidatesScores)|CandidateScoresByFlowTail], Alloc, U
     findall(CandidateId, member((CandidateId, _), OldCandidatesScores), Candidates),
     \+ flowUsesUpdatedNodes(UpdatedNodes, Candidates),
     updateScores(CandidateScoresByFlowTail, Alloc, UpdatedNodes, NodeMetrics, NewCandidateScoresByFlowTail).
-
-
-
-
-/* transmissionTime(PacketSize, Bandwidth, TTime) :- TTime is PacketSize/Bandwidth.
-
-delay(PathMinB, [_,_], Delay) :- Delay is PathMinB, !.
-delay(PathMinB, Path, Delay) :- PathMinB > 0, length(Path, L), Hops is L-1, Delay is PathMinB/Hops.
-delay(PathMinB, _, 0) :- PathMinB < 0.
-
-compatiblePaths([(FlowId, CandidateId, P, MinB, D)|Fs], Paths, [(FlowId, CandidateId, P, (MinB,MaxB), D)|NewFs]) :-
-    dataReqs(FlowId, PacketSize, BurstSize, _, _, Th), 
-    totQTime(P, FlowId, CandidateId, PacketSize, BurstSize, Paths, TotQTime),
-    MaxB is MinB + 2*Th - TotQTime, MaxB >= 0,
-    compatiblePaths(Fs, Paths, NewFs).
-compatiblePaths([], _, []).
-
-totQTime([S,D|Path], FId, CandidateId, PacketSize, BurstSize, Paths, TotQTime) :-
-    link(S, D, _, Bandwidth, _),
-    findall(PB, relevantFlow(FId, CandidateId, S, Paths, PB), PBs), sumlist(PBs, Sum),
-    QTime is (((BurstSize - 1) * PacketSize) + Sum)/Bandwidth,
-    totQTime([D|Path], FId, CandidateId, PacketSize, BurstSize, Paths, TmpQTime),
-    TotQTime is QTime + TmpQTime.
-totQTime([_], _, _, _, _, _, 0).
-
-relevantFlow(CurrF, CurrP, N, Paths, PB) :-
-    dif((F,P), (CurrF,CurrP)), member((F,P,Path),Paths), member(N, Path),
-    dataReqs(F,PS,BR,_,_,_), PB is PS * BR. */
-
-/* upperBound(CandidateScoresByFlow, Carb, OldAlloc, OldNodeMetrics, UpperBound, UpperBoundCost) :-
-    upperBound(CandidateScoresByFlow, OldCarbon, OldAlloc, OldNodeMetrics, _, NewNodeMetrics, NewCarbon),
-    solutionCost(NewNodeMetrics, UpperBoundCost),
-    UpperBound is ceiling(NewCarbon). */
-
-/* upperBound(CandidateScoresByFlow, OldCarbon, OldAlloc, OldNodeMetrics, UpperBound, UpperBoundCost) :-
-    upperBound(CandidateScoresByFlow, OldCarbon, OldAlloc, OldNodeMetrics, _, NewNodeMetrics, NewCarbon),
-    solutionCost(NewNodeMetrics, UpperBoundCost),
-    UpperBound is ceiling(NewCarbon).
-
-upperBound([], OldCarbon, _, OldNodeMetrics, _, OldNodeMetrics, OldCarbon).
-upperBound([(FlowId, CandidateScoresList) | CandidateScoresByFlowTail], OldCarbon, OldAlloc, OldNodeMetrics, NewAlloc, NewNodeMetrics, NewCarbon) :-
-    last(CandidateScoresList, (CandidateId, _)),
-    processPathPerFlow(FlowId, CandidateId, OldCarbon, OldAlloc, OldNodeMetrics, _, TmpAlloc, TmpNodeMetrics, _, TmpCarbon),
-    upperBound(CandidateScoresByFlowTail, TmpCarbon, TmpAlloc, TmpNodeMetrics, NewAlloc, NewNodeMetrics, NewCarbon). */
