@@ -223,11 +223,11 @@ minMaxCarbonRec([(_, C, _, _) | Ts], AccMin, AccMax, Min, Max) :-
     minMaxCarbonRec(Ts, NewMin, NewMax, Min, Max).
 
 minMaxCost([], 0, 0).
-minMaxCost([(_, _, _, Cost) | Tail], Min, Max) :-
+minMaxCost([(_, _, Cost, _) | Tail], Min, Max) :-
     minMaxCostRec(Tail, Cost, Cost, Min, Max).
 
 minMaxCostRec([], Min, Max, Min, Max).
-minMaxCostRec([(_, _, _, Cost) | Tail], CurrMin, CurrMax, Min, Max) :-
+minMaxCostRec([(_, _, Cost, _) | Tail], CurrMin, CurrMax, Min, Max) :-
     NewMin is min(CurrMin, Cost),
     NewMax is max(CurrMax, Cost),
     minMaxCostRec(Tail, NewMin, NewMax, Min, Max).
