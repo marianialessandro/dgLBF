@@ -12,16 +12,18 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from config import CARBON_CREDITS_FILE_PATH
 
+import tempfile as tf
+
 def main():
-    n_nodes = 100
+    n_nodes = 2**7
     m = int(np.log2(n_nodes))
-    seed = 42
-    n_flows = 5
+    seed = 110446
+    n_flows = 10
     builder = "barabasi_albert"
-    p = None
+    p = 0.9
     gml = None
     experiment_dir = Path(c.DATA_DIR)
-
+            
     exp = Experiment(
         n_flows=n_flows,
         builder=builder,
@@ -30,11 +32,11 @@ def main():
         p=p,
         gml=gml,
         seed=seed,
-        version="cc",
+        version="ccg",
         experiment_dir=experiment_dir
     )
+    
     exp.run()
-
     print(exp)
     
     credits = load_carbon_credits(Path(CARBON_CREDITS_FILE_PATH))
@@ -65,6 +67,7 @@ def main():
             f"(costo unitario €{cc.costo}, max quantita {cc.max_quantita})"
         )
 
-
 if __name__ == "__main__":
     main()
+
+

@@ -26,10 +26,19 @@ sim_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, T
     Infs is I2 - I1 - 5,
     Time  is T2 - T1.
 
-sim_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Count, Infs, Time) :-
+sim_greenglbfG(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Infs, Time) :-
     statistics(inferences, I1),
         statistics(cputime, T1),
-            wrap_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Count),
+            glbfCCG(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost),
+        statistics(cputime, T2),
+    statistics(inferences, I2),
+    Infs is I2 - I1 - 5,
+    Time  is T2 - T1.
+
+sim_greenglbfBNB(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Infs, Time) :-
+    statistics(inferences, I1),
+        statistics(cputime, T1),
+            glbfCCBNB(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost),
         statistics(cputime, T2),
     statistics(inferences, I2),
     Infs is I2 - I1 - 5,

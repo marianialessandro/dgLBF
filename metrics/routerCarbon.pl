@@ -1,4 +1,4 @@
-:- table routerCarbon/3.
+/* :- table routerCarbon/3. */
 
 currentTime("12:30").
 

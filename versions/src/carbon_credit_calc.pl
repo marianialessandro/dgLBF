@@ -1,35 +1,19 @@
 :- use_module(library(clpfd)).
 
 carbonCreditCalculator(TargetCO2, Solution, MinCost) :-
-    init(Ids, CO2s, Costs, MaxQs),
-
-    length(Ids, N),
-    length(Qs, N),
-    Qs ins 0..sup,
-    constrain_max(Qs, MaxQs),
-
-    scalar_product(CO2s, Qs, #=, TotalCO2),
+    allCarbonCredits(Items),
+    creditModel(Items, TotalCO2, MinCost, Qs, Solution),
     TotalCO2 #>= TargetCO2,
-    scalar_product(Costs, Qs, #=, MinCost),
+    labeling([min(MinCost)], [MinCost|Qs]).
 
-    append(Qs, [MinCost], Vars),
-    labeling([min(MinCost)], Vars),
+allCarbonCredits(Items) :-
+    findall(credit(Id,CO2,Cost,MaxQ),
+            carbonCredit(Id,CO2,Cost,MaxQ),
+            Items).
 
-    pair_ids_q(Ids, Qs, Solution).
-
-init(Ids, CO2s, Costs, MaxQs) :-
-    findall(carbonCredit(Id,CO2,Cost,MaxQ), carbonCredit(Id,CO2,Cost,MaxQ), Credits),
-    unzip(Credits, Ids, CO2s, Costs, MaxQs).
-
-unzip([carbonCredit(I,CO2,C,Cap)|T], [I | Is], [CO2 | CO2s], [C | Cs], [Cap | Caps]) :-
-    unzip(T, Is, CO2s, Cs, Caps).
-unzip([], [], [], [], []).
-
-constrain_max([Q|Qs], [MaxQ|MaxQs]) :-
-    Q #=< MaxQ,
-    constrain_max(Qs, MaxQs).
-constrain_max([], []).
-
-pair_ids_q([I|Is], [Q|Qs], [id(I,Q)|Rest]) :-
-    pair_ids_q(Is, Qs, Rest).
-pair_ids_q([], [], []).
+creditModel([], 0, 0, [], []).
+creditModel([credit(Id,CO2,Cost,MaxQ)|T], SumCO2, SumCost, [Q|Qs], [id(Id,Q)|Sol]) :-
+    Q in 0..MaxQ,
+    SumCO2 #= CO2*Q + RestCO2,
+    SumCost #= Cost*Q + RestCost,
+    creditModel(T, RestCO2, RestCost, Qs, Sol).

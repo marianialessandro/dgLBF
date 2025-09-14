@@ -5,6 +5,8 @@ from os.path import dirname, exists
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
+from collections import defaultdict
+
 import psutil
 
 import config as c
@@ -31,9 +33,9 @@ class Experiment:
         p: Optional[float] = None,
         gml: Optional[str] = None,
         replica_probability: float = 0.0,
-        version: Literal["plain", "rel", "pp", "aa", "all", "ccg", "ccbnb", "ccbnbTScores"] = "plain",
+        version: Literal["plain", "rel", "pp", "aa", "all", "ccg", "ccbnb", "ccbnbTFiltering", "ccbnbTNoFiltering"] = "plain",
         seed: Any = None,
-        timeout: int = 1800,
+        timeout: int = 100000000,
         experiment_dir: Path = c.DATA_DIR,
         prebuilt_flows_file: Optional[Path] = None,
     ):
@@ -59,7 +61,7 @@ class Experiment:
         self.experiment_dir = experiment_dir
 
         self.prebuilt_flows_file = prebuilt_flows_file
-        self.flows_file: Optional[Path] = None  # set in set_flows()
+        self.flows_file: Optional[Path] = None
         self.energy_profile_file: Optional[Path] = None
 
         self.result: Dict[str, Any] = {}
@@ -75,8 +77,8 @@ class Experiment:
 
         self.flow_scores: Dict[str, float] = {}
 
+
     def sort_flows(self) -> None:
-        # Assicurati che i candidati siano calcolati
         if not self.candidates:
             self.calculate_candidates()
 
@@ -96,7 +98,7 @@ class Experiment:
             )
             self.flows_file = self.experiment_dir / "flows" / filename
             
-    def set_energy_profile_file(self):
+    """ def set_energy_profile_file(self):
         if "cc" in self.version:
             if self.builder == "gml" and self.gml:
                 profile_name = self.gml
@@ -104,14 +106,24 @@ class Experiment:
                 filename = c.ENERGY_PROFILE_FILE.format(
                     name=self.infrastructure.name
                 )
-                self.energy_profile_file = self.experiment_dir / "energyProfiles" / filename      
+                self.energy_profile_file = self.experiment_dir / "energyProfiles" / filename   """    
+                
+    def set_energy_profile_file(self):
+        if "cc" not in (self.version or "").lower():
+            return
+
+        if self.builder == "gml" and self.gml:
+            name = Path(self.gml).stem if isinstance(self.gml, (str, Path)) else str(self.gml)
+        else:
+            name = self.infrastructure.name
+
+        filename = c.ENERGY_PROFILE_FILE.format(name=name)
+        self.energy_profile_file = self.experiment_dir / "energyProfiles" / filename
 
     def set_flows(self):
-        # Se il file è prebuilt, termina
         if self.prebuilt_flows_file is not None:
             return
 
-        # Genera i flussi casuali garantendo percorsi esistenti
         self.flows = []
         for i in range(self.n_flows):
             exists_path = False
@@ -125,11 +137,11 @@ class Experiment:
                     f"f{i}", start, end, random=True, rep_prob=self.replica_probability
                 )
             )
-        # Ordina i flussi per lunghezza del percorso
+            
         self.flows.sort(
             key=lambda f: nx.shortest_path_length(self.infrastructure, f.start, f.end)
         )
-
+        
     def upload_flows(self):
         if self.prebuilt_flows_file is not None:
             return
@@ -140,8 +152,7 @@ class Experiment:
         aa_reqs = get_anti_affinity([f.fid for f in self.flows])
 
         flows_path = self.flows_file
-    
-    
+
         if not exists(dirname(flows_path)):
             makedirs(dirname(flows_path))
 
@@ -164,6 +175,9 @@ class Experiment:
                     )
             parts.append("")
 
+        node_to_pids = defaultdict(list)
+        st_to_pids: Dict[Tuple[str, str], List[str]] = defaultdict(list)
+
         for (source, target), paths in self.candidates.items():
             for idx, path in enumerate(paths):
                 pid = f"p{idx}_{source}_{target}"
@@ -175,36 +189,36 @@ class Experiment:
                         target=target,
                     )
                 )
+                st_to_pids[(source, target)].append(pid)
+                for n in path:
+                    node_to_pids[str(n)].append(pid)
         parts.append("")
 
-        for (source, target), alphas in self.average_alphas.items():
-            for idx, alpha in enumerate(alphas):
-                pid = f"p{idx}_{source}_{target}"
-                parts.append(
-                    c.CANDIDATE_ALPHA.format(pid=pid, alpha=round(alpha, 4))
-                )
-        parts.append("")
-        
         if hasattr(self, 'candidate_lengths') and self.candidate_lengths:
             for (source, target), lengths in self.candidate_lengths.items():
                 for idx, length in enumerate(lengths):
                     pid = f"p{idx}_{source}_{target}"
                     parts.append(f"candidate_length({pid}, {length}).")
-            parts.append("")    
+            parts.append("")
+
+        for f in self.flows:
+            pids = st_to_pids.get((f.start, f.end), [])
+            pids_str = ", ".join(pids)
+            parts.append(f"flow_candidates({f.fid}, [{pids_str}]).")
+        parts.append("")
 
         with open(flows_path, "w+") as file:
             file.write("\n".join(parts))
-
+        
     def set_energy_profiles(self):
-        if "cc" in self.version:
-            if self.builder == "gml" and self.gml:
-                profile_name = self.gml
-            else:
-                profile_name = self.infrastructure.name
-                profiles_list = generate_energy_profiles(
-                    nodes=list(self.infrastructure.nodes()),
-                )
-                self.energy_profiles = {str(p.node): p for p in profiles_list}
+        if "cc" not in (self.version or "").lower():
+            return
+        profiles_list = generate_energy_profiles(
+            nodes=list(self.infrastructure.nodes())
+        )
+        
+        self.energy_profiles = {str(p.node): p for p in profiles_list}
+
 
  
     def upload_energy_profiles(self):
@@ -239,7 +253,6 @@ class Experiment:
             f"Inferences:   {result.get('Inferences', '–')}",
         ]
 
-        # Time formatting sicuro
         t = result.get("Time", None)
         if isinstance(t, (int, float)):
             lines.append(f"Time:         {t:.4f} s")
@@ -251,12 +264,10 @@ class Experiment:
 
         output = result.get("Output")
 
-        # Nessun risultato strutturato
         if not isinstance(output, dict):
             lines.append(f"No results: {output}")
             return lines
 
-        # Sezione Paths and Delays
         lines.append("Paths and Delays:")
         for (flow, pid), attr in output.items():
             lines.append(f"  Flow {flow}/{pid}:")
@@ -276,7 +287,6 @@ class Experiment:
                 lines.append(f"    Delay:     {delay:.4f} ms")
         lines.append("")
 
-        # Sezione Allocation (solo se presente e non vuota)
         allocation = result.get("Allocation") or {}
         if isinstance(allocation, dict) and allocation:
             lines.append("Allocation (link → bandwidth):")
@@ -284,7 +294,6 @@ class Experiment:
                 lines.append(f"  {s} → {d}: {bw} Mbps")
             lines.append("")
 
-        # Sezione Carbon/Cost se versione "cc"
         if "cc" in (self.version or "").lower():
             lines.append("Node Energy and Emissions Summary:")
             node_costs = result.get("NodeCarbonCost") or []
@@ -313,8 +322,7 @@ class Experiment:
             if total_cost is not None:
                 lines.append(f"Total Cost: {total_cost}")
 
-        # Info extra per versioni bnbT (case-insensitive)
-        if "bnbt" in (self.version or "").lower():
+        if "bnbT" in (self.version or "").lower():
             count = result.get("Count", None)
             if count is not None:
                 lines.append(f"Examinated Solution: {count}")
@@ -331,7 +339,7 @@ class Experiment:
     def calculate_candidates(self):
         paths = {
             (f.start, f.end): sorted(
-                self.infrastructure.simple_paths(f.start, f.end), key=lambda p: len(p)
+                self.infrastructure.simple_paths(f.start, f.end, True), key=lambda p: len(p)
             ) for f in self.flows
         }
         self.candidates = paths
@@ -368,10 +376,10 @@ class Experiment:
         self.set_flowsFileName()
         
         self.infrastructure.upload()
-        if self.version and "ccbnbT" in self.version:
+        if self.version and "cc" in self.version:
             self.sort_flows()
-            self.calculate_average_alphas()
-            self.sort_candidates_by_alpha()
+            """ self.calculate_average_alphas()
+            self.sort_candidates_by_alpha() """
             self.calculate_candidate_lengths()
             
         self.upload_flows()
@@ -393,6 +401,8 @@ class Experiment:
             infra_path=self.experiment_dir / "infrastructures",
             version=self.version,
         )
+        
+        print("ARCHI: ", len(self.infrastructure.edges))
         
         self.set_flows()
         self.set_energy_profiles()
@@ -433,9 +443,10 @@ class Experiment:
         
         query = None
         
-        # if "ccbnbT" in self.version or "ccbnbT2" in self.version:
         if self.version and "ccbnbT" in self.version:
             query = c.TEST_CC_QUERY
+        elif self.version == "ccg":
+            query = c.MAIN_CCG_QUERY
         elif "cc" in self.version:
             query = c.MAIN_CC_QUERY
         else:

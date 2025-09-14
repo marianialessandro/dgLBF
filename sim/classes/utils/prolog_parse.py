@@ -48,6 +48,7 @@ def parse_allocation(allocation):
 def parse_output(out, version: str = "plain"):
     o = parse_prolog(out)
     
+    
     result = {
         "Output": (
             parse_paths_no_reliability(o["Output"])

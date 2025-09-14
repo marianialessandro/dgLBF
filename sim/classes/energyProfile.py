@@ -3,6 +3,7 @@ class EnergyProfile:
         self,
         node: str,
         idle_power: float,
+        maxPower: float,
         eps: float,
         t1: int,
         t2: int,
@@ -12,6 +13,7 @@ class EnergyProfile:
     ):
         self.node = node
         self.idle_power = idle_power
+        self.maxPower = maxPower
         self.eps = eps
         self.t1 = t1
         self.t2 = t2
@@ -23,6 +25,7 @@ class EnergyProfile:
         factEp = (
             f"energyProfile({self.node}, {self.idle_power:.2f}, "
             f"p({self.eps:.1e}, {self.t1}, {self.t2}), "
+            f"{self.maxPower:.2f},"
             f"{self.cost_kwh:.2f})."
         )
         

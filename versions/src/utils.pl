@@ -1,5 +1,3 @@
-:- table routerLoad/3, allFlows/1, allNodes/1.
-
 updateCapacities([N1,N2|Ns], BitRate, OldAlloc, NewAlloc) :-
     select((N1,N2,OldC), OldAlloc, Rest), NewC is OldC + BitRate,
     updateCapacities([N2|Ns], BitRate, [(N1,N2,NewC)|Rest], NewAlloc).
@@ -38,10 +36,9 @@ flowDetails(FlowId, S, D, PacketSize, BitRate, Budget, Th) :-
 allFlows(Flows) :-
     findall(FlowId, flow(FlowId, _, _), Flows).
 
-routerLoad(Node, NodeMetrics, Load) :-
-    member((Node, L), NodeMetrics), !,
-    Load = L.
-routerLoad(_, _, 0).
-
 allNodes(AllNodes) :-
     findall(Node, node(Node, _), AllNodes).
+
+routerLoad(Node, NodeMetrics, L) :-
+    memberchk((Node, L), NodeMetrics), !.
+routerLoad(_, _, 0).

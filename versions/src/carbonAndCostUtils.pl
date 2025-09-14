@@ -1,27 +1,30 @@
-:- table routerMetrics/4.
-
 computeCarbonFootprintAndCosts([], Result) :- !,
     allNodes(AllNodes),
     computeCarbonFootprintAndCostsEmpty(AllNodes, Result).
-computeCarbonFootprintAndCosts(NodeLoads, NodesCarbonFootprintAndCosts) :-
-    computeCarbonFootprintAndCostsRec(NodeLoads, NodesCarbonFootprintAndCosts).
+computeCarbonFootprintAndCosts(NodesLoad, NodesCarbonFootprintAndCosts) :-
+    allNodes(Nodes),
+    computeCarbonFootprintAndCosts(Nodes, NodesLoad, [], NodesCarbonFootprintAndCosts).
 
-computeCarbonFootprintAndCostsRec([(Node,LoadMb)|Tail], [(Node,LoadMb,Carbon,Cost)|Rest]) :-
-    routerMetrics(Node, LoadMb, Carbon, Cost),
-    computeCarbonFootprintAndCostsRec(Tail, Rest).
-computeCarbonFootprintAndCostsRec([], []).
-
+computeCarbonFootprintAndCosts([], _, NodesCarbonFootprintAndCosts, NodesCarbonFootprintAndCosts).
+computeCarbonFootprintAndCosts([Node | Nodes], NodesLoad, NodesCarbonFootprintAndCostsIn, NodesCarbonFootprintAndCosts) :-
+    routerLoad(Node, NodesLoad, Load),
+    routerCarbonCost(Node, Load, Carbon, Cost),
+    computeCarbonFootprintAndCosts(Nodes, NodesLoad, [(Node,Load,Carbon,Cost)|NodesCarbonFootprintAndCostsIn], NodesCarbonFootprintAndCosts).
 
 computeCarbonFootprintAndCostsEmpty([], []).
 computeCarbonFootprintAndCostsEmpty([Node | Tail], [(Node,LoadMb,Carbon,Cost)|Rest]) :-
     routerLoad(Node, [], LoadMb),
-    routerMetrics(Node, LoadMb, Carbon, Cost),
+    routerCarbonCost(Node, LoadMb, Carbon, Cost),
     computeCarbonFootprintAndCostsEmpty(Tail, Rest).
 
-routerMetrics(Node, LoadMb, Carbon, Cost) :-
-    routerEnergy(Node, LoadMb, EnergyUsed),
-    routerCarbon(Node, LoadMb, Carbon),
-    energyCost(Node, EnergyUsed, Cost).
+
+routerCarbonCost(N, Load, Carbon, Cost) :-
+    timePeriod(T),
+    energyProfile(N, IdlePower, P, MaxPower, CostkWh),
+    routerEnergy(Load, IdlePower, MaxPower, P, T, Energy_kWh),
+    alpha(N, Alpha),
+    Carbon is Energy_kWh * Alpha,
+    Cost is Energy_kWh * CostkWh.
 
 sumCarbon([(_, _, C, _)|Tail], TotalCarbon) :-
     sumCarbon(Tail, RestCarbon),

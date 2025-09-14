@@ -6,6 +6,20 @@ import pandas as pd
 
 # --- Infrastructure config ---
 
+""" NODE_LAT_MIN, NODE_LAT_MAX = 1, 5
+LINK_LAT_MIN, LINK_LAT_MAX = 1, 5
+LINK_BW_MIN, LINK_BW_MAX = 300, 5000
+LINK_REL_MIN, LINK_REL_MAX = 0.99, 0.999
+
+# --- Flow config ---
+
+PACKET_SIZE = 0.008
+BURST_SIZE_MIN, BURST_SIZE_MAX = 2, 4
+BIT_RATE_MIN, BIT_RATE_MAX = 300, 2000
+LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 30, 60
+TOLERATION_THRESHOLD_MIN, TOLERATION_THRESHOLD_MAX = 10, 20
+RELIABILITY_MIN, RELIABILITY_MAX = 0.8, 0.9 """
+
 NODE_LAT_MIN, NODE_LAT_MAX = 1, 5
 LINK_LAT_MIN, LINK_LAT_MAX = 1, 5
 LINK_BW_MIN, LINK_BW_MAX = 200, 500
@@ -115,7 +129,8 @@ ENERGY_PROFILE_FILE_PATH = join(ENERGY_PROFILES_DIR, ENERGY_PROFILE_FILE)
 # query per caricare gli energy profiles
 LOAD_ENERGY_PROFILES_QUERY = "once(loadEnergyProfiles('{path}'))."
 # query principale per la versione cc (carbon‐aware gLBF)
-MAIN_CC_QUERY = "once(sim_greenglbf(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, TotalCost, Inferences, Time))."
+MAIN_CC_QUERY = "once(sim_greenglbfBNB(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, TotalCost, Inferences, Time))."
+MAIN_CCG_QUERY = "once(sim_greenglbfG(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, TotalCost, Inferences, Time))."
 
 TEST_CC_QUERY = "once(sim_greenglbf(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, TotalCost, Count, Inferences, Time))."
 
