@@ -52,9 +52,10 @@ possiblePaths([], Alloc, Alloc, Loads, Loads, Carbon, Carbon, Cost, Cost, Out, O
 bestCandidateForFlow(FlowId, Candidates, AllocIn, LoadsIn, CarbonIn, CostIn, AllocOut, LoadsOut, CarbonOut, CostOut, BestOut) :-
     bestsCandidates(Candidates, FlowId, AllocIn, LoadsIn, CarbonIn, CostIn, Bests),
     Bests = [_|_],
-    predsort(bestCompare, Bests, [best(CarbonOut, CostOut, AllocOut, LoadsOut, BestOut)|_]).
+    predsort(bestCompare, Bests, Sorted),
+    member(best(CarbonOut, CostOut, AllocOut, LoadsOut, BestOut), Sorted).
 
-bestsCandidates([], _, _, _, _, _, []).
+bestsCandidates([], _, _, _, _, _, []) .
 bestsCandidates([PId|Ps], FlowId, AllocIn, LoadsIn, CarbonIn, CostIn, [best(Carbon, Cost, Alloc, Loads, Out)|Rest]) :-
     path(FlowId, PId, AllocIn, LoadsIn, CarbonIn, CostIn, Alloc, Loads, Carbon, Cost, Out),
     bestsCandidates(Ps, FlowId, AllocIn, LoadsIn, CarbonIn, CostIn, Rest).
@@ -62,9 +63,9 @@ bestsCandidates([PId|Ps], FlowId, AllocIn, LoadsIn, CarbonIn, CostIn, Rest) :-
     \+ path(FlowId, PId, AllocIn, LoadsIn, CarbonIn, CostIn, _Alloc, _Loads, _Carbon, _Cost, _Out),
     bestsCandidates(Ps, FlowId, AllocIn, LoadsIn, CarbonIn, CostIn, Rest).
 
-bestCompare(Order, best(Carbon, Cost1, _Alloc1, _Loads1, _Out1), best(Carbon, Cost2, _Alloc2, _Loads2, _Out2)) :-
+bestCompare(Order, best(Carbon, Cost1, _, _, _), best(Carbon, Cost2, _, _, _)) :-
     compare(Order, Cost1, Cost2).
-bestCompare(Order, best(Carbon1, _Cost1, _Alloc1, _Loads1, _Out1), best(Carbon2, _Cost2, _Alloc2, _Loads2, _Out2)) :-
+bestCompare(Order, best(Carbon1, _, _, _, _), best(Carbon2, _, _, _, _)) :-
     Carbon1 \= Carbon2,
     compare(Order, Carbon1, Carbon2).
 
