@@ -48,7 +48,7 @@ class Infrastructure(nx.DiGraph):
 
         self._size = len(self.nodes)
         filename = c.INFRA_FILE.format(
-            name=(gml.title() if gml else self._size), seed=seed
+            name=(gml if gml else self._size), seed=seed
         )
         self.file = join(infra_path, filename)
         self.name = basename(self.file).split(".")[0]

@@ -129,10 +129,8 @@ ENERGY_PROFILE_FILE_PATH = join(ENERGY_PROFILES_DIR, ENERGY_PROFILE_FILE)
 # query per caricare gli energy profiles
 LOAD_ENERGY_PROFILES_QUERY = "once(loadEnergyProfiles('{path}'))."
 # query principale per la versione cc (carbon‐aware gLBF)
-MAIN_CC_QUERY = "once(sim_greenglbfBNB(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, TotalCost, Inferences, Time))."
-MAIN_CCG_QUERY = "once(sim_greenglbfG(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, TotalCost, Inferences, Time))."
-
-TEST_CC_QUERY = "once(sim_greenglbf(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, TotalCost, Count, Inferences, Time))."
+MAIN_CCG_QUERY = "once(sim_greenglbfG(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, EnergyCost, TotalCost, Inferences, Time))."
+MAIN_CCBNB_QUERY = "once(sim_greenglbfBNB(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, EnergyCost, TotalCost, Inferences, Time))."
 
 
 ENERGY_PROFILES_DIR = DATA_DIR / "energyProfiles"

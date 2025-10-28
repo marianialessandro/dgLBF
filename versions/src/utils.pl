@@ -42,3 +42,10 @@ allNodes(AllNodes) :-
 routerLoad(Node, NodeMetrics, L) :-
     memberchk((Node, L), NodeMetrics), !.
 routerLoad(_, _, 0).
+
+flowCandidates(FlowId, Candidates):-
+    flow(FlowId, S, D),
+    findall(Id, candidate(Id, S, D, _), Candidates).
+
+/* flowCandidates(FlowId, Candidates):-
+    flow_candidates(FlowId, Candidates). */

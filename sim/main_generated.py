@@ -15,10 +15,10 @@ from config import CARBON_CREDITS_FILE_PATH
 import tempfile as tf
 
 def main():
-    n_nodes = 2**7
+    n_nodes = 2**4
     m = int(np.log2(n_nodes))
-    seed = 110446
-    n_flows = 10
+    seed = 110296
+    n_flows = 50
     builder = "barabasi_albert"
     p = 0.9
     gml = None
@@ -32,7 +32,7 @@ def main():
         p=p,
         gml=gml,
         seed=seed,
-        version="ccg",
+        version="ccbnb",
         experiment_dir=experiment_dir
     )
     

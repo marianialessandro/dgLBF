@@ -33,9 +33,9 @@ class Experiment:
         p: Optional[float] = None,
         gml: Optional[str] = None,
         replica_probability: float = 0.0,
-        version: Literal["plain", "rel", "pp", "aa", "all", "ccg", "ccbnb", "ccbnbTFiltering", "ccbnbTNoFiltering"] = "plain",
+        version: Literal["plain", "rel", "pp", "aa", "all", "ccg", "ccgp", "ccbnb"] = "plain",
         seed: Any = None,
-        timeout: int = 100000000,
+        timeout: int = 7200,
         experiment_dir: Path = c.DATA_DIR,
         prebuilt_flows_file: Optional[Path] = None,
     ):
@@ -97,17 +97,7 @@ class Experiment:
                 rp=self.replica_probability,
             )
             self.flows_file = self.experiment_dir / "flows" / filename
-            
-    """ def set_energy_profile_file(self):
-        if "cc" in self.version:
-            if self.builder == "gml" and self.gml:
-                profile_name = self.gml
-            else:
-                filename = c.ENERGY_PROFILE_FILE.format(
-                    name=self.infrastructure.name
-                )
-                self.energy_profile_file = self.experiment_dir / "energyProfiles" / filename   """    
-                
+                        
     def set_energy_profile_file(self):
         if "cc" not in (self.version or "").lower():
             return
@@ -194,17 +184,13 @@ class Experiment:
                     node_to_pids[str(n)].append(pid)
         parts.append("")
 
-        if hasattr(self, 'candidate_lengths') and self.candidate_lengths:
-            for (source, target), lengths in self.candidate_lengths.items():
-                for idx, length in enumerate(lengths):
-                    pid = f"p{idx}_{source}_{target}"
-                    parts.append(f"candidate_length({pid}, {length}).")
-            parts.append("")
-
         for f in self.flows:
             pids = st_to_pids.get((f.start, f.end), [])
             pids_str = ", ".join(pids)
             parts.append(f"flow_candidates({f.fid}, [{pids_str}]).")
+        parts.append("")
+        
+        parts.append(f"timeOfDay(day).")
         parts.append("")
 
         with open(flows_path, "w+") as file:
@@ -214,12 +200,11 @@ class Experiment:
         if "cc" not in (self.version or "").lower():
             return
         profiles_list = generate_energy_profiles(
-            nodes=list(self.infrastructure.nodes())
+            nodes=list(self.infrastructure.nodes()),
+            random_state= self.seed
         )
         
         self.energy_profiles = {str(p.node): p for p in profiles_list}
-
-
  
     def upload_energy_profiles(self):
         if "cc" not in self.version.lower() or not self.energy_profiles:
@@ -378,8 +363,6 @@ class Experiment:
         self.infrastructure.upload()
         if self.version and "cc" in self.version:
             self.sort_flows()
-            """ self.calculate_average_alphas()
-            self.sort_candidates_by_alpha() """
             self.calculate_candidate_lengths()
             
         self.upload_flows()
@@ -401,9 +384,7 @@ class Experiment:
             infra_path=self.experiment_dir / "infrastructures",
             version=self.version,
         )
-        
-        print("ARCHI: ", len(self.infrastructure.edges))
-        
+                
         self.set_flows()
         self.set_energy_profiles()
         self.calculate_candidates()
@@ -438,17 +419,13 @@ class Experiment:
             prolog.query(c.LOAD_ENERGY_PROFILES_QUERY.format(path=self.energy_profile_file))
             prolog.query(c.LOAD_CARBON_CREDITS_QUERY.format(path=c.CARBON_CREDITS_FILE_PATH))
 
-    def run_prolog_query(self, prolog):
-        """ query = c.MAIN_CC_QUERY if "cc" in self.version else c.MAIN_QUERY """
-        
+    def run_prolog_query(self, prolog):        
         query = None
         
-        if self.version and "ccbnbT" in self.version:
-            query = c.TEST_CC_QUERY
-        elif self.version == "ccg":
+        if self.version and "ccbnb" in self.version:
+            query = c.MAIN_CCBNB_QUERY
+        elif self.version and "ccg" in self.version:
             query = c.MAIN_CCG_QUERY
-        elif "cc" in self.version:
-            query = c.MAIN_CC_QUERY
         else:
             query = c.MAIN_QUERY
         

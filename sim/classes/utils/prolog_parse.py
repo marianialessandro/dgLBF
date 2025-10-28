@@ -82,8 +82,5 @@ def parse_output(out, version: str = "plain"):
             }
             for id, quantity in o["Solution"]
         ]
-        
-    if version and "ccbnbT" in version:
-        result["Count"] = o["Count"]
-
+    
     return result

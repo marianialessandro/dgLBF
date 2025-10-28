@@ -1,71 +1,63 @@
-import numpy as np
 from typing import List, Optional
+import numpy as np
 from classes.energyProfile import EnergyProfile
+
+BASE_PROFILES = [
+    {"idle_power": 1099, "maxPower": 1500, "eps": 0.8},
+    {"idle_power": 300, "maxPower": 500, "eps": 1.02},
+    {"idle_power": 200, "maxPower": 300, "eps": 0.85},
+    {"idle_power": 150, "maxPower": 310, "eps": 4.10},
+    {"idle_power": 275, "maxPower": 650, "eps": 19.04},
+    {"idle_power": 245, "maxPower": 250, "eps": 0.25},
+    {"idle_power": 89, "maxPower": 650, "eps": 28.48},
+    {"idle_power": 82, "maxPower": 250, "eps": 8.53},
+    {"idle_power": 35, "maxPower": 100, "eps": 17.11},
+    {"idle_power": 33, "maxPower": 100, "eps": 17.63},
+]
 
 def generate_energy_profiles(
     nodes: List[str],
-    capacity_min: int = 150,
-    capacity_max: int = 270,
-    eps_min: float = 1e-3,
-    eps_max: float = 50e-3,
-    t1_min: int = 1500,
-    t2_max: int = 2000,
     alpha_min: float = 0.01,
     alpha_max: float = 0.99,
     cost_min: float = 0.24,
     cost_max: float = 0.90,
     random_state: Optional[int] = None,
 ) -> List[EnergyProfile]:
+    if not BASE_PROFILES:
+        raise ValueError("BASE_PROFILES non può essere vuoto.")
+    nbase = len(BASE_PROFILES)
+
     rng = np.random.default_rng(random_state)
     n = len(nodes)
 
-    def lhs_uniform(low, high, n):
-        edges = np.linspace(low, high, n + 1)
-        vals = np.array([rng.uniform(edges[i], edges[i+1]) for i in range(n)])
-        rng.shuffle(vals)
-        return vals
+    indices = rng.integers(0, nbase, size=n)
 
-    def beta_in_range(a, b, low, high, size):
-        return low + rng.beta(a, b, size=size) * (high - low)
+    def sample_alpha_day():
+        a = alpha_min + rng.beta(0.6, 0.6) * (alpha_max - alpha_min)
+        b = rng.uniform(alpha_min, alpha_max)
+        return float(0.7 * a + 0.3 * b)
 
-    # U-shape per più estremi + LHS per evitare ammassamenti
-    alpha_day_vals = 0.7 * beta_in_range(0.6, 0.6, alpha_min, alpha_max, n) \
-                     + 0.3 * lhs_uniform(alpha_min, alpha_max, n)
-    cost_vals = 0.7 * beta_in_range(0.7, 0.7, cost_min, cost_max, n) \
-                + 0.3 * lhs_uniform(cost_min, cost_max, n)
+    def sample_cost():
+        c = cost_min + rng.beta(0.7, 0.7) * (cost_max - cost_min)
+        d = rng.uniform(cost_min, cost_max)
+        return float(0.7 * c + 0.3 * d)
 
-    profiles = []
+    profiles: List[EnergyProfile] = []
     for i, node in enumerate(nodes):
-        idle_power = rng.uniform(capacity_min, capacity_max)
+        base = BASE_PROFILES[int(indices[i])]
         
-        # headroom = 0.20
-        # maxPower = idle_power * (1.0 + headroom)
-        
-        headroom = rng.uniform(0.20, 0.50)
-        maxPower = idle_power * (1.0 + headroom)
-
-        
-        eps = ((capacity_max-capacity_min)/19.7)/1000
-        t1 = rng.integers(t1_min, t2_max)
-        t2 = rng.integers(t1 + 1, t2_max + 1)
-
-        alpha_day = float(alpha_day_vals[i])
+        alpha_day = sample_alpha_day()
         alpha_night = float(rng.triangular(alpha_day, alpha_max, alpha_max))
-
-        cost_kwh = float(cost_vals[i])
+        cost_kwh = sample_cost()
 
         profiles.append(EnergyProfile(
             node=node,
-            idle_power=idle_power,
-            maxPower=maxPower,
-            eps=eps,
-            t1=t1,
-            t2=t2,
+            idle_power=float(base["idle_power"]),
+            maxPower=float(base["maxPower"]),
+            eps=base["eps"],
             alphaDay=alpha_day,
             alphaNight=alpha_night,
             cost_kwh=cost_kwh,
         ))
 
     return profiles
-
- 

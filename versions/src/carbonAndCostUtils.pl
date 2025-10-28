@@ -5,18 +5,18 @@ computeCarbonFootprintAndCosts(NodesLoad, NodesCarbonFootprintAndCosts) :-
     allNodes(Nodes),
     computeCarbonFootprintAndCosts(Nodes, NodesLoad, [], NodesCarbonFootprintAndCosts).
 
-computeCarbonFootprintAndCosts([], _, NodesCarbonFootprintAndCosts, NodesCarbonFootprintAndCosts).
-computeCarbonFootprintAndCosts([Node | Nodes], NodesLoad, NodesCarbonFootprintAndCostsIn, NodesCarbonFootprintAndCosts) :-
-    routerLoad(Node, NodesLoad, Load),
-    routerCarbonCost(Node, Load, Carbon, Cost),
-    computeCarbonFootprintAndCosts(Nodes, NodesLoad, [(Node,Load,Carbon,Cost)|NodesCarbonFootprintAndCostsIn], NodesCarbonFootprintAndCosts).
-
 computeCarbonFootprintAndCostsEmpty([], []).
 computeCarbonFootprintAndCostsEmpty([Node | Tail], [(Node,LoadMb,Carbon,Cost)|Rest]) :-
     routerLoad(Node, [], LoadMb),
     routerCarbonCost(Node, LoadMb, Carbon, Cost),
     computeCarbonFootprintAndCostsEmpty(Tail, Rest).
 
+
+computeCarbonFootprintAndCosts([], _, NodesCarbonFootprintAndCosts, NodesCarbonFootprintAndCosts).
+computeCarbonFootprintAndCosts([Node | Nodes], NodesLoad, NodesCarbonFootprintAndCostsIn, NodesCarbonFootprintAndCosts) :-
+    routerLoad(Node, NodesLoad, Load),
+    routerCarbonCost(Node, Load, Carbon, Cost),
+    computeCarbonFootprintAndCosts(Nodes, NodesLoad, [(Node,Load,Carbon,Cost)|NodesCarbonFootprintAndCostsIn], NodesCarbonFootprintAndCosts).
 
 routerCarbonCost(N, Load, Carbon, Cost) :-
     timePeriod(T),

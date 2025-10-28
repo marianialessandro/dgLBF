@@ -5,8 +5,6 @@ class EnergyProfile:
         idle_power: float,
         maxPower: float,
         eps: float,
-        t1: int,
-        t2: int,
         alphaDay: float,
         alphaNight: float,
         cost_kwh: float,
@@ -15,8 +13,6 @@ class EnergyProfile:
         self.idle_power = idle_power
         self.maxPower = maxPower
         self.eps = eps
-        self.t1 = t1
-        self.t2 = t2
         self.alphaDay = alphaDay
         self.alphaNight = alphaNight
         self.cost_kwh = cost_kwh
@@ -24,7 +20,7 @@ class EnergyProfile:
     def to_prolog(self) -> str:
         factEp = (
             f"energyProfile({self.node}, {self.idle_power:.2f}, "
-            f"p({self.eps:.1e}, {self.t1}, {self.t2}), "
+            f"{self.eps:.1e},"
             f"{self.maxPower:.2f},"
             f"{self.cost_kwh:.2f})."
         )

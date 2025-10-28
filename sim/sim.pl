@@ -17,39 +17,39 @@ sim_glbf(Out, Alloc, Infs, Time) :-
 wrap(Out, Alloc) :- glbf(Out, Alloc).
 wrap([], []) :- \+ glbf(_, _).
 
-sim_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Infs, Time) :-
+/* sim_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, EnergyCost, TotalCost, Infs, Time) :-
     statistics(inferences, I1),
         statistics(cputime, T1),
             wrap_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost),
         statistics(cputime, T2),
     statistics(inferences, I2),
     Infs is I2 - I1 - 5,
-    Time  is T2 - T1.
+    Time  is T2 - T1. */
 
-sim_greenglbfG(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Infs, Time) :-
+sim_greenglbfG(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, EnergyCost, TotalCost, Infs, Time) :-
     statistics(inferences, I1),
         statistics(cputime, T1),
-            glbfCCG(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost),
+            glbfCCG(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, EnergyCost, TotalCost),
         statistics(cputime, T2),
     statistics(inferences, I2),
     Infs is I2 - I1 - 5,
     Time  is T2 - T1.
 
-sim_greenglbfBNB(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Infs, Time) :-
+sim_greenglbfBNB(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, EnergyCost, TotalCost, Infs, Time) :-
     statistics(inferences, I1),
         statistics(cputime, T1),
-            glbfCCBNB(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost),
+            glbfCCBNB(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, EnergyCost, TotalCost),
         statistics(cputime, T2),
     statistics(inferences, I2),
     Infs is I2 - I1 - 5,
     Time  is T2 - T1.
 
-wrap_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Count) :-
-    glbfCC(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Count).
+/* wrap_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Count) :-
+    glbfCCG(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost, Count).
 wrap_greenglbf(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost) :-
-    glbfCC(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost).
+    glbfCCG(Out, Alloc, NodesCarbonFootprintAndCosts, TotalCarbon, Solution, TotalCost).
 wrap_greenglbf([], [], []) :-
-    \+ glbfCC(_, _, _).
+    \+ glbfCCG(_, _, _). */
 
 loadInfrastructure(Path) :-
     open(Path, read, Str),
