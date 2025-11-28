@@ -6,6 +6,20 @@ import pandas as pd
 
 # --- Infrastructure config ---
 
+""" NODE_LAT_MIN, NODE_LAT_MAX = 1, 5
+LINK_LAT_MIN, LINK_LAT_MAX = 1, 5
+LINK_BW_MIN, LINK_BW_MAX = 300, 5000
+LINK_REL_MIN, LINK_REL_MAX = 0.99, 0.999
+
+# --- Flow config ---
+
+PACKET_SIZE = 0.008
+BURST_SIZE_MIN, BURST_SIZE_MAX = 2, 4
+BIT_RATE_MIN, BIT_RATE_MAX = 300, 2000
+LATENCY_BUDGET_MIN, LATENCY_BUDGET_MAX = 30, 60
+TOLERATION_THRESHOLD_MIN, TOLERATION_THRESHOLD_MAX = 10, 20
+RELIABILITY_MIN, RELIABILITY_MAX = 0.8, 0.9 """
+
 NODE_LAT_MIN, NODE_LAT_MAX = 1, 5
 LINK_LAT_MIN, LINK_LAT_MAX = 1, 5
 LINK_BW_MIN, LINK_BW_MAX = 200, 500
@@ -36,7 +50,9 @@ GML_DIR = DATA_DIR / "gml"
 
 RESULTS_FILE = "dglbf-seed={Seed},flows={flows},nodes={nodes},prob={prob}.csv"
 GML_FILE = "{name}.gml"
+ENERGY_PROFILE_FILE = "energyProfile-{name}.pl"
 FLOWS_FILE = "flows{size}-{seed}-{rp}.pl"
+FLOWS_FILE_MULTIEXP = "flows{size}-{seed}-{rp}-{iteration}.pl"
 INFRA_FILE = "infr{name}-{seed}.pl"
 VERSION_FILE = "glbf-{version}.pl"
 
@@ -46,6 +62,9 @@ FLOW_FILE_PATH = join(FLOW_DIR, FLOWS_FILE)
 INFRA_FILE_PATH = join(INFRA_DIR, INFRA_FILE)
 SIM_FILE_PATH = join(SIM_DIR, "sim.pl")
 VERSION_FILE_PATH = join(VERSIONS_DIR, VERSION_FILE)
+
+CEV_STANDARD_FLOWS_FILE = join(FLOW_DIR, "flows-cev.pl")
+TEST_STANDARD_FLOWS_FILE = join(FLOW_DIR, "flows-test.pl")
 
 # --- Plots config ---
 PLOT_FORMAT = "pdf"
@@ -93,9 +112,31 @@ NODE = "node({nid}, {latency_budget})."
 LINK = "link({source}, {dest}, {lat}, {bw}, {rel})."
 DEGREE = "degree({nid}, {degree})."
 CANDIDATE = "candidate({pid}, {source}, {target}, {path})."
+CANDIDATE_ALPHA = "candidate_alpha({pid}, {alpha})."
 
 
 def df_to_file(df: pd.DataFrame, file_path: Path):
     # create the directory if it doesn't exist
     file_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(file_path, mode="a", header=(not isfile(file_path)))
+
+
+# —– Energy‐aware (cc) config —–
+ENERGY_PROFILES_DIR = DATA_DIR / "energyProfiles"
+ENERGY_PROFILE_FILE = "energyProfile-{name}.pl"
+ENERGY_PROFILE_FILE_PATH = join(ENERGY_PROFILES_DIR, ENERGY_PROFILE_FILE)
+
+# query per caricare gli energy profiles
+LOAD_ENERGY_PROFILES_QUERY = "once(loadEnergyProfiles('{path}'))."
+# query principale per la versione cc (carbon‐aware gLBF)
+MAIN_CCG_QUERY = "once(sim_greenglbfG(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, EnergyCost, TotalCost, Inferences, Time))."
+MAIN_CCBNB_QUERY = "once(sim_greenglbfBNB(Output, Allocation, NodeCarbonCost, TotalCarbon, Solution, EnergyCost, TotalCost, Inferences, Time))."
+
+
+ENERGY_PROFILES_DIR = DATA_DIR / "energyProfiles"
+ENERGY_PROFILE_FILE_PATH = join(ENERGY_PROFILES_DIR, ENERGY_PROFILE_FILE)
+LOAD_ENERGY_PROFILES_QUERY = "once(loadEnergyProfiles('{path}'))."
+
+CARBON_CREDITS_DIR = DATA_DIR / "carbonCredits"
+CARBON_CREDITS_FILE_PATH = join(CARBON_CREDITS_DIR, "carbonCredits.pl")
+LOAD_CARBON_CREDITS_QUERY = "once(loadCarbonCredits('{path}'))."

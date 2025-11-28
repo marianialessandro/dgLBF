@@ -1,4 +1,4 @@
-# import os
+import os
 from os import makedirs
 from os.path import basename, dirname, exists, join
 from typing import Any, Literal, Optional
@@ -8,7 +8,6 @@ import config as c
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-
 
 # nx graph obtained as a barabasi albert graph
 class Infrastructure(nx.DiGraph):
@@ -21,6 +20,7 @@ class Infrastructure(nx.DiGraph):
         seed: Any = None,
         gml: Optional[str] = None,
         infra_path: str = c.INFRA_DIR,
+        version: Optional[str] = None,
     ):
         super().__init__(directed=True)
         self.n = n
@@ -48,10 +48,12 @@ class Infrastructure(nx.DiGraph):
 
         self._size = len(self.nodes)
         filename = c.INFRA_FILE.format(
-            name=(gml.title() if gml else self._size), seed=seed
+            name=(gml if gml else self._size), seed=seed
         )
         self.file = join(infra_path, filename)
         self.name = basename(self.file).split(".")[0]
+        
+        self.version = version
 
     def init_nodes(self, nodes):
         for n in nodes:
@@ -102,7 +104,7 @@ class Infrastructure(nx.DiGraph):
             paths = list(
                 nx.all_simple_paths(self, source, target, cutoff=self.diameter)
             )
-        # sort by number of hops between source and target
+        
         paths.sort(key=lambda x: len(x))
 
         if not paths:
@@ -124,7 +126,7 @@ class Infrastructure(nx.DiGraph):
 @click.command()
 @click.argument("nodes", type=int)
 @click.option(
-    "--seed", "-s", type=int, default=None, help="Seed for the random number generator."
+    "--seed", "-s", type=int, default=None, help="Seed for il RNG."
 )
 def main(nodes, seed):
     infrastructure = Infrastructure(n=nodes, m=int(np.log2(nodes)), seed=seed)

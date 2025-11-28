@@ -28,3 +28,24 @@ sortPaths(Order, (FlowId1, _, (_, Reliability1, _, _)), (FlowId2, _, (_, Reliabi
     ; Reliability1 < Reliability2 -> Order = '>'
     ; Order = '='
     ).
+
+flowDetails(FlowId, S, D, PacketSize, BitRate, Budget, Th) :-
+    flow(FlowId, S, D),
+    dataReqs(FlowId, PacketSize, _, BitRate, Budget, Th).
+
+allFlows(Flows) :-
+    findall(FlowId, flow(FlowId, _, _), Flows).
+
+allNodes(AllNodes) :-
+    findall(Node, node(Node, _), AllNodes).
+
+routerLoad(Node, NodeMetrics, L) :-
+    memberchk((Node, L), NodeMetrics), !.
+routerLoad(_, _, 0).
+
+flowCandidates(FlowId, Candidates):-
+    flow(FlowId, S, D),
+    findall(Id, candidate(Id, S, D, _), Candidates).
+
+/* flowCandidates(FlowId, Candidates):-
+    flow_candidates(FlowId, Candidates). */
